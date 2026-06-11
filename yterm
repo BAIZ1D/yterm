@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.3.0
+# Version: 2.3.1
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.3.0"
+VERSION="2.3.1"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # Enhanced Stability flags for 2026/WSL 
@@ -53,7 +53,7 @@ case "$1" in
     -u|--update)
         echo "Updating system packages..."
         if command -v apt &> /dev/null; then
-            sudo apt update && sudo apt install -y fzf mpv curl nodejs
+            sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
             if dpkg -l | grep -q yt-dlp; then
                 echo "Removing outdated apt version of yt-dlp..."
                 sudo apt remove -y yt-dlp
@@ -90,6 +90,7 @@ check_tool() {
 check_tool "yt-dlp"
 check_tool "fzf"
 check_tool "mpv"
+check_tool "ffmpeg"
 
 export YTDLP_JS_RUNTIMES="node"
 
@@ -120,52 +121,42 @@ echo "$selected_list" | while read -r selected; do
     current=$((current + 1))
     video_id=$(echo "$selected" | sed "s/.*\[\(.*\)\]$/\1/")
     title=$(echo "$selected" | sed "s/ \[[^]]*\]$//")
+    url="https://www.youtube.com/watch?v=$video_id"
 
     echo "------------------------------------------------"
     echo "[$current/$total] Playing: $title"
     echo "------------------------------------------------"
 
-    echo "Fetching stream..."
-    
-    # TRY 1: Modern Web Extraction
-    # shellcheck disable=SC2086
-    stream_url=$(yt-dlp $COMMON_FLAGS -g --user-agent "$UA" --extractor-args "youtube:player-client=web,mweb" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
-
-    # TRY 2: Mobile Client Bypass
-    if [ -z "$stream_url" ]; then
-        # shellcheck disable=SC2086
-        stream_url=$(yt-dlp $COMMON_FLAGS -g --extractor-args "youtube:player-client=ios,android" -f "best" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
-    fi
-
-    # TRY 3: HLS Fallback
-    if [ -z "$stream_url" ]; then
-        # shellcheck disable=SC2086
-        stream_url=$(yt-dlp $COMMON_FLAGS -g --extractor-args "youtube:player-client=web" -f "best[protocol^=m3u8]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
-    fi
-
-    if [ -n "$stream_url" ]; then
-        if command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
+    if command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
+        echo "Fetching stream for Terminology..."
+        stream_url=$(yt-dlp $COMMON_FLAGS -g --user-agent "$UA" -f "best[ext=mp4]" "$url" 2>/dev/null || echo "")
+        if [ -n "$stream_url" ]; then
             echo "Launching Terminology popup..."
             set +e; typop "$stream_url"; PLAY_STATUS=$?; set -e
         else
             PLAY_STATUS=1
         fi
-        
-        if [ $PLAY_STATUS -ne 0 ]; then
-             echo "Launching MPV..."
-             MPV_FLAGS="--user-agent=$UA --title=\"yterm: $title\""
-             if [ $IS_WSL -eq 1 ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
-                 echo "No display detected. Playing Audio-Only."
-                 MPV_FLAGS="$MPV_FLAGS --no-video"
-             fi
-             MPV_FLAGS="$MPV_FLAGS --cache=yes --demuxer-max-bytes=100M"
-             
-             set +e
-             mpv $MPV_FLAGS "$stream_url"
-             set -e
-        fi
     else
-        echo "Critical Error: Could not extract stream URL."
-        echo "Try running: yterm --update"
+        PLAY_STATUS=1
+    fi
+    
+    if [ $PLAY_STATUS -ne 0 ]; then
+         echo "Launching MPV..."
+         # We pass the YouTube URL directly to MPV. 
+         # MPV uses its internal ytdl hook to call yt-dlp, which is 100% more reliable
+         # than passing extracted stream URLs which often expire or hit 403 Forbidden.
+         MPV_FLAGS="--user-agent=\"$UA\" --title=\"yterm: $title\""
+         
+         # Performance & Stability flags
+         MPV_FLAGS="$MPV_FLAGS --cache=yes --demuxer-max-bytes=150M --ytdl-format=\"bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best\""
+         
+         if [ $IS_WSL -eq 1 ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+             echo "No display detected. Playing Audio-Only."
+             MPV_FLAGS="$MPV_FLAGS --no-video"
+         fi
+         
+         set +e
+         mpv $MPV_FLAGS "$url"
+         set -e
     fi
 done

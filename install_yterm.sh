@@ -30,7 +30,7 @@ if [[ "${OS}" == "Linux"* ]]; then
             sudo apt remove -y yt-dlp
         fi
         echo -e "${BLUE}Installing system dependencies...${NC}"
-        sudo apt update && sudo apt install -y fzf mpv curl nodejs
+        sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
         
         echo -e "${BLUE}Installing latest standalone yt-dlp binary...${NC}"
         sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
@@ -45,7 +45,7 @@ elif [[ "${OS}" == "Darwin"* ]]; then
     fi
     if command -v brew &> /dev/null; then
         echo -e "${BLUE}Installing for macOS via Homebrew...${NC}"
-        brew install yt-dlp fzf mpv curl node
+        brew install yt-dlp fzf mpv ffmpeg curl node
     else
         echo -e "${RED}Homebrew not found. Please install Homebrew first: https://brew.sh/${NC}"
         exit 1

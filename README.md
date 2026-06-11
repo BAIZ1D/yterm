@@ -27,7 +27,7 @@ sudo apt update && sudo apt install -y curl && curl -sSL https://raw.githubuserc
 
 **macOS**
 ```bash
-brew install yt-dlp fzf mpv curl node && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+brew install yt-dlp fzf mpv ffmpeg curl node && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 **Windows (PowerShell)**
