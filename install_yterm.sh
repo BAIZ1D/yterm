@@ -46,6 +46,14 @@ elif [[ "${OS}" == "Darwin"* ]]; then
     if command -v brew &> /dev/null; then
         echo -e "${BLUE}Installing for macOS via Homebrew...${NC}"
         brew install yt-dlp fzf mpv ffmpeg curl node
+        
+        # macOS MPV FIX: Ensure mpv uses yt-dlp explicitly
+        echo -e "${BLUE}Configuring mpv for macOS...${NC}"
+        mkdir -p "$HOME/.config/mpv"
+        if [ ! -f "$HOME/.config/mpv/mpv.conf" ] || ! grep -q "ytdl_path=yt-dlp" "$HOME/.config/mpv/mpv.conf"; then
+            echo "script-opts=ytdl_hook-ytdl_path=yt-dlp" >> "$HOME/.config/mpv/mpv.conf"
+            echo "ytdl-format=\"bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best\"" >> "$HOME/.config/mpv/mpv.conf"
+        fi
     else
         echo -e "${RED}Homebrew not found. Please install Homebrew first: https://brew.sh/${NC}"
         exit 1
