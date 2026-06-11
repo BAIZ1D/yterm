@@ -92,3 +92,12 @@ Keywords for search engines:
 youtube terminal client, cli youtube player, bash youtube search, yterm, baizid al hamid, 
 terminal video player, fzf youtube, linux youtube tool, macos youtube cli, wsl youtube player
 -->
+
+---
+
+### 📦 Install Specific Version
+If you need to install a specific version of yterm, you can use the `YTERM_VERSION` environment variable:
+
+```bash
+YTERM_VERSION=v2.4.2 bash -c "$(curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh)"
+```
