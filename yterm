@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.3.2
+# Version: 2.3.3
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.3.2"
+VERSION="2.3.3"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # Enhanced Stability flags for 2026/WSL 
@@ -24,6 +24,12 @@ fi
 IS_MAC=0
 if [[ "$(uname)" == "Darwin" ]]; then
     IS_MAC=1
+    # Ensure Homebrew is in PATH for macOS
+    if [ -x "/opt/homebrew/bin/brew" ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [ -x "/usr/local/bin/brew" ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
 fi
 
 show_help() {
@@ -57,6 +63,9 @@ case "$1" in
     -v|--version) echo "yterm v$VERSION"; exit 0 ;;
     -u|--update)
         echo "Starting Full Update..."
+        # Use GITHUB_TOKEN environment variable if available for private repo support
+        TOKEN="${GITHUB_TOKEN:-}"
+        
         if [ $IS_MAC -eq 1 ]; then
             if command -v brew &> /dev/null; then
                 echo "Updating via Homebrew..."
@@ -79,7 +88,14 @@ case "$1" in
         echo "Downloading latest yterm script..."
         INSTALL_DIR="$HOME/.local/bin"
         mkdir -p "$INSTALL_DIR"
-        curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
+        
+        # Use token if available for private repo support
+        if [ -n "$TOKEN" ]; then
+            curl -sSL -H "Authorization: token $TOKEN" https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
+        else
+            curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
+        fi
+        
         chmod +x "$INSTALL_DIR/yterm"
         echo "Update complete! You are now on v$VERSION"
         exit 0
@@ -162,26 +178,31 @@ echo "$selected_list" | while read -r selected; do
     
     if [ $PLAY_STATUS -ne 0 ]; then
          echo "Launching MPV..."
-         MPV_FLAGS=(
-             "--user-agent=$UA"
-             "--title=yterm: $title"
-         )
+         
+         # Use an array for flags to safely handle spaces and quotes
+         MPV_ARGS=()
+         MPV_ARGS+=(--user-agent="$UA")
+         MPV_ARGS+=(--title="yterm: $title")
          
          # macOS Specific stability flags
          if [ $IS_MAC -eq 1 ]; then
-             MPV_FLAGS+=("--input-ipc-server=/tmp/mpv-socket" "--hwdec=auto")
+             # Use a unique socket to avoid conflicts, and auto-safe for hardware decoding
+             MPV_ARGS+=(--input-ipc-server="/tmp/mpv-socket-$(id -u)")
+             MPV_ARGS+=(--hwdec=auto-safe)
          fi
 
          # Performance & Stability flags
-         MPV_FLAGS+=("--cache=yes" "--demuxer-max-bytes=150M" "--ytdl-format=bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best")
+         MPV_ARGS+=(--cache=yes)
+         MPV_ARGS+=(--demuxer-max-bytes=150M)
+         MPV_ARGS+=(--ytdl-format="bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best")
          
          if [ $IS_WSL -eq 1 ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
              echo "No display detected. Playing Audio-Only."
-             MPV_FLAGS+=("--no-video")
+             MPV_ARGS+=(--no-video)
          fi
          
          set +e
-         mpv "${MPV_FLAGS[@]}" "$url"
+         mpv "${MPV_ARGS[@]}" "$url"
          MPV_EXIT=$?
          set -e
          
