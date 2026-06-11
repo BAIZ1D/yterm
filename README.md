@@ -101,3 +101,12 @@ If you need to install a specific version of yterm, you can use the `YTERM_VERSI
 ```bash
 YTERM_VERSION=v2.4.2 bash -c "$(curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh)"
 ```
+
+---
+
+### 🗑️ Uninstallation
+If you ever want to remove `yterm` and clean up your `PATH`, simply run the uninstaller script:
+
+```bash
+bash -c "$(curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/uninstall_yterm.sh)"
+```
