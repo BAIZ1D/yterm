@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.3.7
+# Version: 2.3.8
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.3.7"
+VERSION="2.3.8"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # Enhanced Stability flags for 2026/WSL 
@@ -192,9 +192,10 @@ echo "$selected_list" | while read -r selected; do
              # PROFESSIONAL LOOK for macOS
              # 1. Force software decoding (no red errors since it won't even try hw)
              MPV_ARGS+=(--hwdec=no)
-             # 2. Total silencing for terminal
-             MPV_ARGS+=(--really-quiet)
-             # 3. Disable the on-screen display info for a cleaner look
+             # 2. Total silencing of all logs except player status
+             MPV_ARGS+=(--msg-level=all=no)
+             MPV_ARGS+=(--msg-level=cplayer=info)
+             # 3. Clean OSD
              MPV_ARGS+=(--no-video-osd)
          fi
 
@@ -209,7 +210,12 @@ echo "$selected_list" | while read -r selected; do
          fi
          
          set +e
-         mpv "${MPV_ARGS[@]}" "$url"
+         if [ $IS_MAC -eq 1 ]; then
+             # On Mac, we grep the output to show ONLY the lines you want and hide ALL red errors
+             mpv "${MPV_ARGS[@]}" "$url" 2>&1 | grep --line-buffered -E "AO:|VO:|AV:" | grep -v "2026-"
+         else
+             mpv "${MPV_ARGS[@]}" "$url"
+         fi
          MPV_EXIT=$?
          set -e
          
