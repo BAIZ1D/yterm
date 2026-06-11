@@ -19,7 +19,24 @@ if grep -qE "(Microsoft|microsoft|WSL)" /proc/version 2>/dev/null; then
     IS_WSL=1
 fi
 
-# 2. Advanced Dependency Management
+# 2. Permission Rescue Function
+# This fixes directories that might be owned by root from previous failed sudo runs
+ensure_writable() {
+    local target="$1"
+    
+    # If target exists and is not writable, chown it
+    if [ -e "$target" ] && [ ! -w "$target" ]; then
+        echo -e "${BLUE}Fixing permissions for ${target}...${NC}"
+        sudo chown -R "$USER" "$target" 2>/dev/null || true
+    fi
+
+    # Ensure the directory exists
+    if [[ "$target" == *"/"* ]]; then
+        mkdir -p "$target" 2>/dev/null || (sudo mkdir -p "$target" && sudo chown -R "$USER" "$target")
+    fi
+}
+
+# 3. Advanced Dependency Management
 echo -e "${BLUE}Checking dependencies...${NC}"
 
 if [[ "${OS}" == "Linux"* ]]; then
@@ -33,6 +50,7 @@ if [[ "${OS}" == "Linux"* ]]; then
         sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
         
         echo -e "${BLUE}Installing latest standalone yt-dlp binary...${NC}"
+        ensure_writable "/usr/local/bin"
         sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
         sudo chmod a+rx /usr/local/bin/yt-dlp
     fi
@@ -49,7 +67,7 @@ elif [[ "${OS}" == "Darwin"* ]]; then
         
         # macOS MPV FIX: Ensure mpv uses yt-dlp explicitly
         echo -e "${BLUE}Configuring mpv for macOS...${NC}"
-        mkdir -p "$HOME/.config/mpv"
+        ensure_writable "$HOME/.config/mpv"
         if [ ! -f "$HOME/.config/mpv/mpv.conf" ] || ! grep -q "ytdl_path=yt-dlp" "$HOME/.config/mpv/mpv.conf"; then
             echo "script-opts=ytdl_hook-ytdl_path=yt-dlp" >> "$HOME/.config/mpv/mpv.conf"
             echo "ytdl-format=\"bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best\"" >> "$HOME/.config/mpv/mpv.conf"
@@ -60,9 +78,9 @@ elif [[ "${OS}" == "Darwin"* ]]; then
     fi
 fi
 
-# 3. Installation
+# 4. Installation
 INSTALL_DIR="$HOME/.local/bin"
-mkdir -p "$INSTALL_DIR"
+ensure_writable "$INSTALL_DIR"
 
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
 curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm" || \
@@ -70,7 +88,7 @@ curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTAL
 
 chmod +x "$INSTALL_DIR/yterm"
 
-# 4. PATH Setup & Ownership Fix
+# 5. PATH Setup & Ownership Fix
 SHELL_CONFIG=""
 if [[ "$SHELL" == *"zsh"* ]]; then 
     SHELL_CONFIG="$HOME/.zshrc"
@@ -79,11 +97,8 @@ elif [[ "$SHELL" == *"bash"* ]]; then
 fi
 
 if [ -n "$SHELL_CONFIG" ]; then
-    # Fix ownership if it was accidentally changed to root by a previous sudo run
-    if [ -f "$SHELL_CONFIG" ] && [ ! -w "$SHELL_CONFIG" ]; then
-        echo -e "${BLUE}Fixing permissions for ${SHELL_CONFIG}...${NC}"
-        sudo chown "$USER" "$SHELL_CONFIG"
-    fi
+    # Fix ownership of shell config if root-owned
+    ensure_writable "$SHELL_CONFIG"
 
     if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
         if [ -f "$SHELL_CONFIG" ]; then
