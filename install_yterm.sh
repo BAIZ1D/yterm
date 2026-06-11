@@ -23,16 +23,25 @@ fi
 # This fixes directories that might be owned by root from previous failed sudo runs
 ensure_writable() {
     local target="$1"
-    
-    # If target exists and is not writable, chown it
-    if [ -e "$target" ] && [ ! -w "$target" ]; then
-        echo -e "${BLUE}Fixing permissions for ${target}...${NC}"
-        sudo chown -R "$USER" "$target" 2>/dev/null || true
+    if [ -z "$target" ]; then return; fi
+
+    # If the parent directory exists but is not writable, we need to fix it first
+    local parent
+    parent=$(dirname "$target")
+    if [ -d "$parent" ] && [ ! -w "$parent" ]; then
+        echo -e "${BLUE}Fixing permissions for parent directory: ${parent}${NC}"
+        sudo chown "$USER" "$parent" 2>/dev/null || true
     fi
 
-    # Ensure the directory exists
-    if [[ "$target" == *"/"* ]]; then
-        mkdir -p "$target" 2>/dev/null || (sudo mkdir -p "$target" && sudo chown -R "$USER" "$target")
+    # Now handle the target itself
+    if [ -e "$target" ]; then
+        if [ ! -w "$target" ]; then
+            echo -e "${BLUE}Fixing permissions for ${target}...${NC}"
+            sudo chown -R "$USER" "$target" 2>/dev/null || true
+        fi
+    else
+        # Try to create it, fallback to sudo if fails
+        mkdir -p "$target" 2>/dev/null || (echo -e "${BLUE}Creating ${target} with sudo...${NC}" && sudo mkdir -p "$target" && sudo chown -R "$USER" "$target")
     fi
 }
 
@@ -67,10 +76,13 @@ elif [[ "${OS}" == "Darwin"* ]]; then
         
         # macOS MPV FIX: Ensure mpv uses yt-dlp explicitly
         echo -e "${BLUE}Configuring mpv for macOS...${NC}"
+        ensure_writable "$HOME/.config"
         ensure_writable "$HOME/.config/mpv"
-        if [ ! -f "$HOME/.config/mpv/mpv.conf" ] || ! grep -q "ytdl_path=yt-dlp" "$HOME/.config/mpv/mpv.conf"; then
-            echo "script-opts=ytdl_hook-ytdl_path=yt-dlp" >> "$HOME/.config/mpv/mpv.conf"
-            echo "ytdl-format=\"bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best\"" >> "$HOME/.config/mpv/mpv.conf"
+        
+        CONFIG_FILE="$HOME/.config/mpv/mpv.conf"
+        if [ ! -f "$CONFIG_FILE" ] || ! grep -q "ytdl_path=yt-dlp" "$CONFIG_FILE"; then
+            echo "script-opts=ytdl_hook-ytdl_path=yt-dlp" >> "$CONFIG_FILE"
+            echo "ytdl-format=\"bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best\"" >> "$CONFIG_FILE"
         fi
     else
         echo -e "${RED}Homebrew not found. Please install Homebrew first: https://brew.sh/${NC}"
@@ -80,6 +92,7 @@ fi
 
 # 4. Installation
 INSTALL_DIR="$HOME/.local/bin"
+ensure_writable "$HOME/.local"
 ensure_writable "$INSTALL_DIR"
 
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
@@ -113,8 +126,6 @@ if [ -n "$SHELL_CONFIG" ]; then
             echo -e "${GREEN}Created ${SHELL_CONFIG} and added to PATH.${NC}"
         fi
     fi
-else
-    echo -e "${RED}Warning: Could not detect shell config. Manually add ${INSTALL_DIR} to your PATH.${NC}"
 fi
 
 echo -e "${GREEN}✅ yterm is ready!${NC}"
