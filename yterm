@@ -184,11 +184,16 @@ echo "$selected_list" | while read -r selected; do
          MPV_ARGS+=(--user-agent="$UA")
          MPV_ARGS+=(--title="yterm: $title")
          
-         # macOS Specific stability flags
+         # macOS Specific stability & cleanup flags
          if [ $IS_MAC -eq 1 ]; then
-             # Use a unique socket to avoid conflicts, and auto-safe for hardware decoding
+             # Use a unique socket to avoid conflicts
              MPV_ARGS+=(--input-ipc-server="/tmp/mpv-socket-$(id -u)")
+             # Use auto-safe but quiet the hardware decoding errors if it falls back to software
              MPV_ARGS+=(--hwdec=auto-safe)
+             MPV_ARGS+=(--msg-level=ffmpeg/video=error,vo=fatal)
+             # Quiet some common macOS-specific cocoa/imk warnings
+             MPV_ARGS+=(--no-terminal)
+             MPV_ARGS+=(--really-quiet)
          fi
 
          # Performance & Stability flags
