@@ -69,19 +69,19 @@ case "$1" in
         if [ $IS_MAC -eq 1 ]; then
             if command -v brew &> /dev/null; then
                 echo "Updating via Homebrew..."
-                brew update && brew upgrade yt-dlp fzf mpv ffmpeg node
+                command brew update && command brew upgrade yt-dlp fzf mpv ffmpeg node
             else
                 echo "Error: Homebrew not found. Cannot update system packages."
             fi
         elif command -v apt &> /dev/null; then
             echo "Updating via apt..."
-            sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
+            sudo apt update && sudo apt install -y fzf mpv ffmpeg command curl nodejs
             if dpkg -l | grep -q yt-dlp; then
                 echo "Removing outdated apt version of yt-dlp..."
                 sudo apt remove -y yt-dlp
             fi
             echo "Installing latest standalone yt-dlp..."
-            sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+            sudo command curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
             sudo chmod a+rx /usr/local/bin/yt-dlp
         fi
         
@@ -91,9 +91,9 @@ case "$1" in
         
         # Use token if available for private repo support
         if [ -n "$TOKEN" ]; then
-            curl -sSL -H "Authorization: token $TOKEN" https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
+            command curl -sSL -H "Authorization: token $TOKEN" https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
         else
-            curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
+            command curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
         fi
         
         chmod +x "$INSTALL_DIR/yterm"
