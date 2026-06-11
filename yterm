@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.1.1
+# Version: 2.2.0
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e # Exit on error
 
-VERSION="2.1.1"
+VERSION="2.2.0"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # --- Signal Handling ---
@@ -25,10 +25,17 @@ OPTIONS:
     -v, --version   Show version information
     -u, --update    Update the underlying yt-dlp engine (requires sudo)
 
-CONTROLS (in selection):
-    TAB             Multi-select videos
-    ENTER           Confirm and start playback
-    CTRL-C          Exit
+CONTROLS:
+    1. SEARCH MENU:
+       - Just type   : Filter the results instantly.
+       - TAB         : Select/Deselect videos to build a playlist.
+       - ENTER       : Start playing the selected queue.
+       - ESC / CTRL-C: Exit search.
+
+    2. DURING PLAYBACK:
+       - q           : Skip current video and move to the next in queue (MPV).
+       - Close Window: Skip current video (Terminology Popup).
+       - CTRL-C      : Kill the entire session and exit to terminal.
 
 DEPENDENCIES:
     - yt-dlp        (Required) The video extraction engine
@@ -92,7 +99,7 @@ if [ -z "$results" ]; then
 fi
 
 # Enable multi-select with TAB and increase fzf height
-selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s) [TAB to multi-select]: " --header="yterm - YouTube Player (Multi-select enabled)" --height=80% --border)
+selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s) [TAB to multi-select]: " --header="yterm - Playlist Builder (TAB to select, ENTER to play)" --height=80% --border)
 
 if [ -z "$selected_list" ]; then
     echo "No video selected."

@@ -37,13 +37,21 @@ if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL
 
 ---
 
-### Controls
+### How to use it (The Quick Guide)
 
-Once you're in the search menu:
-- **Just type**: It filters the 50 results as you go.
-- **TAB**: Select multiple videos (build a queue).
-- **ENTER**: Start playing what you've picked.
-- **CTRL-C**: Kill the current video or quit the app.
+**1. Searching**
+Just run `yterm` followed by your search query:
+```bash
+yterm "lofi hip hop"
+```
+Once the list pops up, just start typing to filter the results. It's instant.
+
+**2. Building a Playlist (Queueing)**
+Don't just play one video. Use **TAB** to select multiple videos from the list. Each one you hit TAB on will be added to your temporary playlist. Hit **ENTER** when you're ready to start the show.
+
+**3. Controls & Skipping**
+- **To Skip**: If you're using MPV (standard), just hit **q** on your keyboard. It will kill the current video and immediately start the next one in your queue. If you're in Terminology, just close the popup window.
+- **To Stop Everything**: If you want to bail on the whole playlist, hit **CTRL-C** in your terminal window. It will kill the entire session.
 
 ---
 

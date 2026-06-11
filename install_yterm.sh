@@ -77,4 +77,11 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
 fi
 
 echo -e "${GREEN}✅ yterm is ready!${NC}"
-echo "Run 'yterm --help' to see how it works."
+echo -e "\n${BLUE}--- QUICK START GUIDE ---${NC}"
+echo -e "1. ${GREEN}Search${NC}  : yterm \"search query\""
+echo -e "2. ${GREEN}Playlist${NC}: Use ${BLUE}TAB${NC} to select multiple videos in the menu."
+echo -e "3. ${GREEN}Play${NC}     : Hit ${BLUE}ENTER${NC}."
+echo -e "4. ${GREEN}Skip${NC}     : Press ${BLUE}q${NC} on your keyboard to skip to the next video."
+echo -e "5. ${GREEN}Exit${NC}     : Press ${BLUE}CTRL-C${NC} in the terminal to kill the session."
+echo -e "-------------------------"
+echo -e "If search ever stops working, just run: ${BLUE}yterm --update${NC}"
