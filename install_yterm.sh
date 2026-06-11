@@ -52,7 +52,15 @@ else
 fi
 
 # 3. Installation
-INSTALL_DIR="$HOME/.local/bin"
+# Detect the real user and home directory (even under sudo)
+ACTUAL_USER="${SUDO_USER:-$USER}"
+ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
+INSTALL_DIR="$ACTUAL_HOME/.local/bin"
+
+if [ "$USER" == "root" ] && [ -n "$SUDO_USER" ]; then
+    echo -e "${BLUE}Running as root via sudo. Installing for user: ${ACTUAL_USER}${NC}"
+fi
+
 mkdir -p "$INSTALL_DIR"
 
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
@@ -60,18 +68,42 @@ curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL
 curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
 
 chmod +x "$INSTALL_DIR/yterm"
+# Ensure the user owns the binary if we created it as root
+if [ "$USER" == "root" ] && [ -n "$SUDO_USER" ]; then
+    chown "$ACTUAL_USER" "$INSTALL_DIR/yterm"
+fi
 
 # 4. PATH Setup
 SHELL_CONFIG=""
-if [[ "$SHELL" == *"zsh"* ]]; then SHELL_CONFIG="$HOME/.zshrc"
-elif [[ "$SHELL" == *"bash"* ]]; then SHELL_CONFIG="$HOME/.bashrc"
+# Detect shell based on the actual user's preference or environment
+USER_SHELL=$(getent passwd "$ACTUAL_USER" | cut -d: -f6 | xargs -I {} basename {} 2>/dev/null || echo $SHELL)
+
+if [[ "$USER_SHELL" == *"zsh"* ]]; then 
+    SHELL_CONFIG="$ACTUAL_HOME/.zshrc"
+elif [[ "$USER_SHELL" == *"bash"* ]]; then 
+    SHELL_CONFIG="$ACTUAL_HOME/.bashrc"
+else
+    # Fallback to checking for existence
+    if [ -f "$ACTUAL_HOME/.zshrc" ]; then SHELL_CONFIG="$ACTUAL_HOME/.zshrc"
+    elif [ -f "$ACTUAL_HOME/.bashrc" ]; then SHELL_CONFIG="$ACTUAL_HOME/.bashrc"
+    fi
 fi
 
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
     if [ -n "$SHELL_CONFIG" ]; then
-        echo -e "\n# Added by yterm" >> "$SHELL_CONFIG"
-        echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$SHELL_CONFIG"
+        echo -e "${BLUE}Updating PATH in ${SHELL_CONFIG}...${NC}"
+        
+        # Check if writable, use sudo tee if not
+        if [ ! -w "$SHELL_CONFIG" ] && [ -f "$SHELL_CONFIG" ]; then
+            echo -e "\n# Added by yterm\nexport PATH=\"\$HOME/.local/bin:\$PATH\"" | sudo tee -a "$SHELL_CONFIG" > /dev/null
+        else
+            echo -e "\n# Added by yterm" >> "$SHELL_CONFIG"
+            echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$SHELL_CONFIG"
+        fi
+        
         echo -e "${GREEN}Added to PATH via ${SHELL_CONFIG}. Restart your terminal or run 'source ${SHELL_CONFIG}'${NC}"
+    else
+        echo -e "${RED}Warning: Could not detect shell config file (e.g., .zshrc). Please add ${INSTALL_DIR} to your PATH manually.${NC}"
     fi
 fi
 
