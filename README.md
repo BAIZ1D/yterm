@@ -57,6 +57,13 @@ Don't just play one video. Use **TAB** to select multiple videos from the list. 
 
 ### If things go south (Troubleshooting)
 
+**Windows (WSL) - Audio & Performance**
+WSL is great, but its not perfect. You might experience:
+- **Audio Bugs**: Crackling or delayed audio. This is usually a WSL/PulseAudio sync issue.
+- **Terminal Jitters**: The interface might feel "laggy" compared to native Linux/Mac.
+- **Fix**: Ensure your Windows is up to date and you are using **WSL 2**. If audio is still broken, try running `yterm --update` to refresh dependencies.
+
+
 **Search stops working / Fetches hang**
 YouTube 2026 uses a "PoToken" to block bots. `yterm` handles this by using **Node.js** and the latest **yt-dlp standalone binary**. If things hang, run:
 ```bash
