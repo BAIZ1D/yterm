@@ -119,9 +119,16 @@ ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
 INSTALL_DIR="$ACTUAL_HOME/.local/bin"
 ensure_writable_dir "$INSTALL_DIR"
 
+get_real_curl() {
+    if [ -f "/usr/bin/curl" ]; then echo "/usr/bin/curl"; return; fi
+    if [ -f "/bin/curl" ]; then echo "/bin/curl"; return; fi
+    echo "curl"
+}
+CURL_CMD=$(get_real_curl)
+
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
-command curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm" || \
-command curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm"
+$CURL_CMD -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm" || \
+$CURL_CMD -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm"
 
 chmod +x "$INSTALL_DIR/yterm"
 
