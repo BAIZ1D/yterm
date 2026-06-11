@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.2.1
+# Version: 2.2.2
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.2.1"
+VERSION="2.2.2"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# Stability flags for WSL/Cross-platform reliability
+# --force-ipv4: Fixes hangs on WSL network stacks
+# --no-check-certificate: Fixes SSL issues on older systems
+# --socket-timeout: Prevents infinite hanging
+STABILITY_FLAGS="--force-ipv4 --no-check-certificate --socket-timeout 15"
 
 # --- Signal Handling ---
 trap "echo -e '\nExiting yterm...'; exit 0" SIGINT SIGTERM
@@ -74,10 +80,11 @@ check_tool "mpv"
 export YTDLP_JS_RUNTIMES="node"
 
 echo "Searching YouTube for: $*..."
-results=$(yt-dlp "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null)
+# shellcheck disable=SC2086
+results=$(yt-dlp $STABILITY_FLAGS "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null)
 
 if [ -z "$results" ]; then
-    echo "No results found."
+    echo "No results found. Try running 'yterm --update' or check your connection."
     exit 1
 fi
 
@@ -100,10 +107,12 @@ echo "$selected_list" | while read -r selected; do
     echo "------------------------------------------------"
 
     echo "Fetching stream..."
-    stream_url=$(yt-dlp -g --user-agent "$UA" --extractor-args "youtube:player-client=android,web" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null)
+    # shellcheck disable=SC2086
+    stream_url=$(yt-dlp $STABILITY_FLAGS -g --user-agent "$UA" --extractor-args "youtube:player-client=android,web" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
 
     if [ -z "$stream_url" ]; then
-        stream_url=$(yt-dlp -g -f 18 "https://www.youtube.com/watch?v=$video_id" 2>/dev/null)
+        # shellcheck disable=SC2086
+        stream_url=$(yt-dlp $STABILITY_FLAGS -g -f 18 "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
     fi
 
     if [ -n "$stream_url" ]; then
@@ -130,6 +139,6 @@ echo "$selected_list" | while read -r selected; do
              set -e
         fi
     else
-        echo "Error: Could not extract stream."
+        echo "Error: Could not extract stream URL. YouTube might be throttling your connection."
     fi
 done
