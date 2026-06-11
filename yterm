@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.2.0
+# Version: 2.2.1
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
-set -e # Exit on error
+set -e
 
-VERSION="2.2.0"
+VERSION="2.2.1"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # --- Signal Handling ---
-# Ensures the whole script exits when you press Ctrl+C during a loop
 trap "echo -e '\nExiting yterm...'; exit 0" SIGINT SIGTERM
+
+# --- WSL Detection ---
+IS_WSL=0
+if grep -qE "(Microsoft|microsoft|WSL)" /proc/version 2>/dev/null; then
+    IS_WSL=1
+fi
 
 show_help() {
     cat << EOF
@@ -20,69 +25,48 @@ yterm v$VERSION - Search and play YouTube videos directly from your terminal.
 USAGE:
     yterm [OPTIONS] "search terms"
 
-OPTIONS:
-    -h, --help      Show this help message
-    -v, --version   Show version information
-    -u, --update    Update the underlying yt-dlp engine (requires sudo)
-
 CONTROLS:
     1. SEARCH MENU:
        - Just type   : Filter the results instantly.
        - TAB         : Select/Deselect videos to build a playlist.
-       - ENTER       : Start playing the selected queue.
-       - ESC / CTRL-C: Exit search.
+       - ENTER       : Start playing.
 
     2. DURING PLAYBACK:
-       - q           : Skip current video and move to the next in queue (MPV).
-       - Close Window: Skip current video (Terminology Popup).
-       - CTRL-C      : Kill the entire session and exit to terminal.
+       - q           : Skip to the next video (MPV).
+       - CTRL-C      : Kill everything and exit.
 
-DEPENDENCIES:
-    - yt-dlp        (Required) The video extraction engine
-    - fzf           (Required) The fuzzy finder interface
-    - mpv           (Required/Fallback) Universal media player
-    - terminology   (Optional) Required for "typop" popup feature
-
-TROUBLESHOOTING:
-    - "No results found": Try updating yt-dlp with 'yterm --update'.
-    - "No audio/video": Check if mpv is installed. 
-    - "Popup not appearing": The popup feature only works in the Terminology terminal.
-      yterm will automatically fallback to MPV on other terminals.
+NOTE FOR WINDOWS (WSL):
+    If video playback hangs, yterm will try to fallback to audio-only.
+    Ensure you are on a modern Windows build (Win 11) for full video support.
 
 EOF
 }
 
 # --- Handle Flags ---
 case "$1" in
-    -h|--help)
-        show_help
-        exit 0
-        ;;
-    -v|--version)
-        echo "yterm v$VERSION"
-        exit 0
-        ;;
+    -h|--help) show_help; exit 0 ;;
+    -v|--version) echo "yterm v$VERSION"; exit 0 ;;
     -u|--update)
         echo "Updating yt-dlp engine..."
         sudo yt-dlp -U
+        echo "Downloading latest yterm script..."
+        INSTALL_DIR="$HOME/.local/bin"
+        curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
+        chmod +x "$INSTALL_DIR/yterm"
+        echo "Update complete!"
         exit 0
         ;;
 esac
 
-if [ -z "$1" ]; then
-    show_help
-    exit 1
-fi
+if [ -z "$1" ]; then show_help; exit 1; fi
 
 # --- Dependency Check ---
 check_tool() {
     if ! command -v "$1" &> /dev/null; then
         echo "Error: Required dependency '$1' is not installed."
-        echo "Please install it to use yterm."
         exit 1
     fi
 }
-
 check_tool "yt-dlp"
 check_tool "fzf"
 check_tool "mpv"
@@ -90,7 +74,6 @@ check_tool "mpv"
 export YTDLP_JS_RUNTIMES="node"
 
 echo "Searching YouTube for: $*..."
-# Increased results to 50 and using a cleaner format
 results=$(yt-dlp "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null)
 
 if [ -z "$results" ]; then
@@ -98,19 +81,15 @@ if [ -z "$results" ]; then
     exit 1
 fi
 
-# Enable multi-select with TAB and increase fzf height
 selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s) [TAB to multi-select]: " --header="yterm - Playlist Builder (TAB to select, ENTER to play)" --height=80% --border)
 
 if [ -z "$selected_list" ]; then
-    echo "No video selected."
     exit 0
 fi
 
-# Count items
 total=$(echo "$selected_list" | wc -l)
 current=0
 
-# Loop through selection for continuous playback
 echo "$selected_list" | while read -r selected; do
     current=$((current + 1))
     video_id=$(echo "$selected" | sed "s/.*\[\(.*\)\]$/\1/")
@@ -120,7 +99,7 @@ echo "$selected_list" | while read -r selected; do
     echo "[$current/$total] Playing: $title"
     echo "------------------------------------------------"
 
-    echo "Fetching stream for [$video_id]..."
+    echo "Fetching stream..."
     stream_url=$(yt-dlp -g --user-agent "$UA" --extractor-args "youtube:player-client=android,web" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null)
 
     if [ -z "$stream_url" ]; then
@@ -131,20 +110,26 @@ echo "$selected_list" | while read -r selected; do
         # Check if typop exists and we are in terminology
         if command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
             echo "Launching Terminology popup..."
-            set +e
-            typop "$stream_url"
-            PLAY_STATUS=$?
-            set -e
+            set +e; typop "$stream_url"; PLAY_STATUS=$?; set -e
         else
             PLAY_STATUS=1
         fi
         
-        # If typop wasn't used, failed, or closed, fallback to MPV
         if [ $PLAY_STATUS -ne 0 ]; then
              echo "Launching MPV..."
-             mpv --user-agent="$UA" --title="yterm: $title" "$stream_url"
+             # WSL COMPATIBILITY HACK: 
+             # If no display is found, use --no-video to prevent hanging.
+             MPV_FLAGS="--user-agent=$UA --title=\"yterm: $title\""
+             if [ $IS_WSL -eq 1 ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+                 echo "No display detected in WSL. Playing Audio-Only to prevent hanging."
+                 MPV_FLAGS="$MPV_FLAGS --no-video"
+             fi
+             
+             set +e
+             mpv $MPV_FLAGS "$stream_url"
+             set -e
         fi
     else
-        echo "Error: Could not extract stream for $title"
+        echo "Error: Could not extract stream."
     fi
 done
