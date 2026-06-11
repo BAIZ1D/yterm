@@ -1,10 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.1.0
+# Version: 2.1.1
 # Made by: BAIZID AL HAMID (cause I was bored)
 
-VERSION="2.1.0"
+# --- Strict Mode ---
+set -e # Exit on error
+
+VERSION="2.1.1"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# --- Signal Handling ---
+# Ensures the whole script exits when you press Ctrl+C during a loop
+trap "echo -e '\nExiting yterm...'; exit 0" SIGINT SIGTERM
 
 show_help() {
     cat << EOF
@@ -60,6 +67,19 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
+# --- Dependency Check ---
+check_tool() {
+    if ! command -v "$1" &> /dev/null; then
+        echo "Error: Required dependency '$1' is not installed."
+        echo "Please install it to use yterm."
+        exit 1
+    fi
+}
+
+check_tool "yt-dlp"
+check_tool "fzf"
+check_tool "mpv"
+
 export YTDLP_JS_RUNTIMES="node"
 
 echo "Searching YouTube for: $*..."
@@ -102,6 +122,8 @@ echo "$selected_list" | while read -r selected; do
 
     if [ -n "$stream_url" ]; then
         echo "Launching Terminology popup..."
+        # We don't set -e for the player to allow continuing on failure
+        set +e
         typop "$stream_url"
         
         # If typop returns immediately or fails, try mpv
@@ -109,6 +131,7 @@ echo "$selected_list" | while read -r selected; do
              echo "Terminology popup failed or closed. Trying MPV..."
              mpv --user-agent="$UA" --title="yterm: $title" "$stream_url"
         fi
+        set -e
     else
         echo "Error: Could not extract stream for $title"
     fi
