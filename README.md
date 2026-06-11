@@ -1,95 +1,56 @@
 # 📺 yterm
 
-The Terminal YouTube Experience. A high-performance, fuzzy-search YouTube client for your command line.
+Honestly, I was just bored, so I made this. It's a tiny tool that lets you search and play YouTube videos directly in your terminal without any of the clutter.
 
-**Made by BAIZID AL HAMID** *(cause I was bored)*
-
----
-
-## 🚀 Features
-- **Fuzzy Search**: Find exactly what you want with instant filtering powered by `fzf`.
-- **Queueing / Multi-select**: Press `TAB` to select multiple videos and watch them in sequence automatically.
-- **50+ Results**: Deep search results (50+) so you never miss a video.
-- **High Performance**: Uses `yt-dlp` for lightning-fast, high-quality stream extraction.
-- **Cross-Platform**: Full support for **Linux**, **macOS**, and **Windows (WSL)**.
-- **Smart Playback**: Native support for **Terminology** popups with an automatic fallback to **MPV** for all other terminals.
-- **Self-Healing**: Built-in update engine to fix YouTube extraction errors instantly.
+It uses `fzf` for fuzzy finding, `yt-dlp` to grab the video, and `mpv` to play it. Simple as that.
 
 ---
 
-## 🛠️ Installation
+## 🚀 One-Command Install (Copy & Paste)
 
-### 1. Requirements & Platform Setup
+Pick your poison based on what you're running:
 
-| Platform | Recommended Environment | Required Dependencies |
-| :--- | :--- | :--- |
-| **Linux** | Standard Terminal | `sudo apt install yt-dlp fzf mpv curl` |
-| **macOS** | Zsh / Terminal | `brew install yt-dlp fzf mpv curl` |
-| **Windows** | **WSL** (Recommended) | Install via `apt` (WSL) or manual `.exe` |
-
-> **Note for Windows Users:** Standard PowerShell and CMD cannot run Bash scripts natively. To use `yterm` on Windows, please use **WSL (Ubuntu)** or **Git Bash**.
-
-### 💻 Windows / PowerShell Quick Start
-If you have **WSL** installed, you can install and run `yterm` directly from PowerShell:
-
-**Install via PowerShell (WSL):**
-```powershell
-wsl bash -c "curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash"
+### 🐧 Linux (Debian / Ubuntu / Mint / Kali)
+```bash
+sudo apt update && sudo apt install -y curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
-**Run via PowerShell (WSL):**
-```powershell
-wsl yterm "your search"
-```
-
-### 2. One-Command Install
-Run the following command in your terminal (Linux/Mac/WSL):
+### 🍎 macOS
+*Make sure you have [Homebrew](https://brew.sh/) installed first.*
 ```bash
 curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
-**Troubleshooting SSL Errors:**
-If you get an error like `SSL certificate problem` or `unable to get local issuer certificate`, your system's security certificates are outdated. You can bypass this by adding `-k` to the command:
-```bash
-curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+### 🪟 Windows (PowerShell)
+*This will install WSL first if you don't have it. If you do, it just runs the setup.*
+```powershell
+if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "Please restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
 ```
 
 ---
 
-## ⌨️ Usage
+## ⌨️ How to use it
 
-### Basic Search
+Search for whatever you want:
 ```bash
-yterm "search for something"
+yterm "never gonna give you up"
 ```
 
-### Controls in Search Menu
-- **Type**: Filter results instantly.
-- **TAB**: Select/Deselect multiple videos for your queue.
-- **ENTER**: Start playing your selection.
-- **CTRL-C**: Exit.
+**Controls:**
+- **Type**: To filter the 50 results.
+- **TAB**: To select multiple videos (build a queue!).
+- **ENTER**: Start playing.
+- **CTRL-C**: Get out of there.
 
-### Maintenance
-YouTube updates its site frequently. If search stops working, run:
+---
+
+## 🌟 Support me
+If you actually end up using this, **throw a ⭐ on the repo**. It’s the only way I know people aren’t just looking at my bored experiments.
+
+## 🛠️ Something broke?
+YouTube likes to break things. If it stops working, just run:
 ```bash
 yterm --update
 ```
 
----
-
-## 🌟 Show your support!
-This project was made because I was bored, but I'm glad you're using it! 
-
-**If you find this tool useful, please give the repository a ⭐ Star!** It helps other people find the project and shows your support for independent open-source tools.
-
----
-
-## ❓ Troubleshooting
-- **No results found**: Run `yterm --update` to refresh the extraction engine.
-- **Video but no audio**: Check your `mpv` configuration or update `mpv`.
-- **Terminology Popup**: This feature only works in the Terminology terminal. On all other terminals (iTerm2, Alacritty, GNOME Terminal, etc.), `mpv` will be used automatically.
-
----
-
-## ⚖️ License
-Open Source - Feel free to use, modify, and distribute!
+**Made by BAIZID AL HAMID**

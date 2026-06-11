@@ -1,66 +1,53 @@
 #!/usr/bin/env bash
 # yterm Official Installer
 # Made by: BAIZID AL HAMID (cause I was bored)
-# Works on Linux, macOS, and WSL
+# Works on Debian/Ubuntu, macOS, and Windows (via WSL)
 
-set -e # Exit on error
+set -e
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-echo -e "${BLUE}🚀 Initializing yterm installation...${NC}"
+echo -e "${BLUE}📺 yterm: The "Boredom" Installation Script${NC}"
 
-# 1. Detect OS
+# 1. Platform Detection
 OS="$(uname -s)"
+IS_WSL=0
+if grep -qE "(Microsoft|microsoft|WSL)" /proc/version 2>/dev/null; then
+    IS_WSL=1
+fi
+
 case "${OS}" in
     Linux*)     DISTRO="Linux";;
     Darwin*)    DISTRO="Mac";;
-    CYGWIN*|MINGW32*|MSYS*|MINGW*) DISTRO="Windows";;
     *)          DISTRO="Unknown"
 esac
 
-echo -e "System detected: ${GREEN}${DISTRO}${NC}"
-
 # 2. Dependency Management
 check_dep() {
-    if ! command -v "$1" &> /dev/null; then
-        return 1
-    fi
-    return 0
+    command -v "$1" &> /dev/null
 }
 
 DEPS=("yt-dlp" "fzf" "mpv" "curl")
 MISSING=()
-
 for dep in "${DEPS[@]}"; do
-    if ! check_dep "$dep"; then
-        MISSING+=("$dep")
-    fi
+    if ! check_dep "$dep"; then MISSING+=("$dep"); fi
 done
 
 if [ ${#MISSING[@]} -gt 0 ]; then
-    echo -e "${RED}⚠️  Missing dependencies: ${MISSING[*]}${NC}"
+    echo -e "${BLUE}Missing dependencies: ${MISSING[*]}${NC}"
     
-    # Auto-install suggestion/execution
     if [ "$DISTRO" == "Linux" ] && command -v apt &> /dev/null; then
-        echo -en "${BLUE}Do you want to install missing dependencies via apt? [y/N]: ${NC}"
-        read -r install_deps
-        if [[ "$install_deps" =~ ^[Yy]$ ]]; then
-            sudo apt update && sudo apt install -y "${MISSING[@]}"
-        fi
+        echo -e "${BLUE}Installing for Debian/Ubuntu...${NC}"
+        sudo apt update && sudo apt install -y "${MISSING[@]}"
     elif [ "$DISTRO" == "Mac" ] && command -v brew &> /dev/null; then
-        echo -en "${BLUE}Do you want to install missing dependencies via Homebrew? [y/N]: ${NC}"
-        read -r install_deps
-        if [[ "$install_deps" =~ ^[Yy]$ ]]; then
-            brew install "${MISSING[@]}"
-        fi
+        echo -e "${BLUE}Installing for macOS via Homebrew...${NC}"
+        brew install "${MISSING[@]}"
     else
-        echo -e "${BLUE}Please install the missing dependencies manually:${NC}"
-        [ "$DISTRO" == "Linux" ] && echo "   sudo apt update && sudo apt install ${MISSING[*]}"
-        [ "$DISTRO" == "Mac" ] && echo "   brew install ${MISSING[*]}"
-        [ "$DISTRO" == "Windows" ] && echo "   Please install ${MISSING[*]} in your WSL or Git Bash environment."
+        echo -e "${RED}Error: Cannot auto-install dependencies.${NC}"
+        echo "Please install: ${MISSING[*]} manually and run this script again."
         exit 1
     fi
 fi
@@ -69,45 +56,25 @@ fi
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
-echo -e "Downloading and installing yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
-# Use -k if needed for SSL issues, but default to safe -sSL
-if ! curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"; then
-    echo -e "${RED}Download failed. Retrying with insecure mode (-k)...${NC}"
-    curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
-fi
+echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
+curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm" || \
+curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
 
 chmod +x "$INSTALL_DIR/yterm"
 
-# 4. Path Check & Shell Configuration
-PATH_ADDED=0
+# 4. PATH Setup
+SHELL_CONFIG=""
+if [[ "$SHELL" == *"zsh"* ]]; then SHELL_CONFIG="$HOME/.zshrc"
+elif [[ "$SHELL" == *"bash"* ]]; then SHELL_CONFIG="$HOME/.bashrc"
+fi
+
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    echo -e "${RED}⚠️  Note: ${INSTALL_DIR} is not in your PATH.${NC}"
-    
-    SHELL_CONFIG=""
-    if [[ "$SHELL" == *"zsh"* ]]; then
-        SHELL_CONFIG="$HOME/.zshrc"
-    elif [[ "$SHELL" == *"bash"* ]]; then
-        SHELL_CONFIG="$HOME/.bashrc"
-    fi
-
     if [ -n "$SHELL_CONFIG" ]; then
-        echo -en "${BLUE}Do you want to add ${INSTALL_DIR} to your ${SHELL_CONFIG}? [y/N]: ${NC}"
-        read -r add_path
-        if [[ "$add_path" =~ ^[Yy]$ ]]; then
-            echo -e "\n# Added by yterm installer" >> "$SHELL_CONFIG"
-            echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$SHELL_CONFIG"
-            echo -e "${GREEN}Path added to ${SHELL_CONFIG}. Please restart your terminal or run: source ${SHELL_CONFIG}${NC}"
-            PATH_ADDED=1
-        fi
+        echo -e "\n# Added by yterm" >> "$SHELL_CONFIG"
+        echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$SHELL_CONFIG"
+        echo -e "${GREEN}Added to PATH via ${SHELL_CONFIG}. Restart your terminal to use 'yterm'.${NC}"
     fi
 fi
 
-# 5. Verification
-if [ $PATH_ADDED -eq 0 ] && [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-     echo -e "${BLUE}To run yterm immediately, use:${NC} ${INSTALL_DIR}/yterm"
-else
-     echo -e "${GREEN}yterm is ready to use!${NC}"
-fi
-
-echo -e "${GREEN}✅ yterm installation complete!${NC}"
-echo "Try running: yterm --help"
+echo -e "${GREEN}✅ yterm is ready!${NC}"
+echo "Run 'yterm --help' to see how it works."
