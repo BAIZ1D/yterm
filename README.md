@@ -95,7 +95,7 @@ terminal video player, fzf youtube, linux youtube tool, macos youtube cli, wsl y
 
 ---
 
-### 📦 Install Specific Version
+### Install Specific Version
 If you need to install a specific version of yterm, you can use the `YTERM_VERSION` environment variable:
 
 ```bash
@@ -104,7 +104,7 @@ YTERM_VERSION=v2.4.2 bash -c "$(curl -sSL https://raw.githubusercontent.com/BAIZ
 
 ---
 
-### 🗑️ Uninstallation
+### Uninstallation
 If you ever want to remove `yterm` and clean up your `PATH`, simply run the uninstaller script:
 
 ```bash
