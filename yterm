@@ -121,17 +121,22 @@ echo "$selected_list" | while read -r selected; do
     fi
 
     if [ -n "$stream_url" ]; then
-        echo "Launching Terminology popup..."
-        # We don't set -e for the player to allow continuing on failure
-        set +e
-        typop "$stream_url"
+        # Check if typop exists and we are in terminology
+        if command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
+            echo "Launching Terminology popup..."
+            set +e
+            typop "$stream_url"
+            PLAY_STATUS=$?
+            set -e
+        else
+            PLAY_STATUS=1
+        fi
         
-        # If typop returns immediately or fails, try mpv
-        if [ $? -ne 0 ]; then
-             echo "Terminology popup failed or closed. Trying MPV..."
+        # If typop wasn't used, failed, or closed, fallback to MPV
+        if [ $PLAY_STATUS -ne 0 ]; then
+             echo "Launching MPV..."
              mpv --user-agent="$UA" --title="yterm: $title" "$stream_url"
         fi
-        set -e
     else
         echo "Error: Could not extract stream for $title"
     fi
