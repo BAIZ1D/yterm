@@ -6,7 +6,7 @@
 # --- Strict Mode ---
 set -e
 
-VERSION="2.4.1"
+VERSION="2.5.0"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # Enhanced Stability flags for 2026/WSL 
