@@ -1,0 +1,115 @@
+#!/bin/bash
+# yterm - The Terminal YouTube Experience
+# Version: 2.1.0
+# Made by: BAIZID AL HAMID (cause I was bored)
+
+VERSION="2.1.0"
+UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+show_help() {
+    cat << EOF
+yterm v$VERSION - Search and play YouTube videos directly from your terminal.
+
+USAGE:
+    yterm [OPTIONS] "search terms"
+
+OPTIONS:
+    -h, --help      Show this help message
+    -v, --version   Show version information
+    -u, --update    Update the underlying yt-dlp engine (requires sudo)
+
+CONTROLS (in selection):
+    TAB             Multi-select videos
+    ENTER           Confirm and start playback
+    CTRL-C          Exit
+
+DEPENDENCIES:
+    - yt-dlp        (Required) The video extraction engine
+    - fzf           (Required) The fuzzy finder interface
+    - mpv           (Required/Fallback) Universal media player
+    - terminology   (Optional) Required for "typop" popup feature
+
+TROUBLESHOOTING:
+    - "No results found": Try updating yt-dlp with 'yterm --update'.
+    - "No audio/video": Check if mpv is installed. 
+    - "Popup not appearing": The popup feature only works in the Terminology terminal.
+      yterm will automatically fallback to MPV on other terminals.
+
+EOF
+}
+
+# --- Handle Flags ---
+case "$1" in
+    -h|--help)
+        show_help
+        exit 0
+        ;;
+    -v|--version)
+        echo "yterm v$VERSION"
+        exit 0
+        ;;
+    -u|--update)
+        echo "Updating yt-dlp engine..."
+        sudo yt-dlp -U
+        exit 0
+        ;;
+esac
+
+if [ -z "$1" ]; then
+    show_help
+    exit 1
+fi
+
+export YTDLP_JS_RUNTIMES="node"
+
+echo "Searching YouTube for: $*..."
+# Increased results to 50 and using a cleaner format
+results=$(yt-dlp "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null)
+
+if [ -z "$results" ]; then
+    echo "No results found."
+    exit 1
+fi
+
+# Enable multi-select with TAB and increase fzf height
+selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s) [TAB to multi-select]: " --header="yterm - YouTube Player (Multi-select enabled)" --height=80% --border)
+
+if [ -z "$selected_list" ]; then
+    echo "No video selected."
+    exit 0
+fi
+
+# Count items
+total=$(echo "$selected_list" | wc -l)
+current=0
+
+# Loop through selection for continuous playback
+echo "$selected_list" | while read -r selected; do
+    current=$((current + 1))
+    video_id=$(echo "$selected" | sed "s/.*\[\(.*\)\]$/\1/")
+    title=$(echo "$selected" | sed "s/ \[[^]]*\]$//")
+
+    echo "------------------------------------------------"
+    echo "[$current/$total] Playing: $title"
+    echo "------------------------------------------------"
+
+    echo "Fetching stream for [$video_id]..."
+    stream_url=$(yt-dlp -g --user-agent "$UA" --extractor-args "youtube:player-client=android,web" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null)
+
+    if [ -z "$stream_url" ]; then
+        stream_url=$(yt-dlp -g -f 18 "https://www.youtube.com/watch?v=$video_id" 2>/dev/null)
+    fi
+
+    if [ -n "$stream_url" ]; then
+        echo "Launching Terminology popup..."
+        typop "$stream_url"
+        
+        # If typop returns immediately or fails, try mpv
+        if [ $? -ne 0 ]; then
+             echo "Terminology popup failed or closed. Trying MPV..."
+             mpv --user-agent="$UA" --title="yterm: $title" "$stream_url"
+        fi
+    else
+        echo "Error: Could not extract stream for $title"
+    fi
+done
