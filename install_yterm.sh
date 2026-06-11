@@ -110,42 +110,52 @@ curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTAL
 chmod +x "$INSTALL_DIR/yterm"
 
 # 5. PATH Setup & Ownership Fix
-SHELL_CONFIG=""
+echo -e "${BLUE}Setting up PATH...${NC}"
+# Determine which files to update
+TARGET_FILES=()
 if [[ "$SHELL" == *"zsh"* ]]; then 
-    SHELL_CONFIG="$HOME/.zshrc"
+    TARGET_FILES=("$HOME/.zshrc" "$HOME/.zprofile")
 elif [[ "$SHELL" == *"bash"* ]]; then 
-    SHELL_CONFIG="$HOME/.bashrc"
+    TARGET_FILES=("$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile")
 fi
 
-if [ -n "$SHELL_CONFIG" ]; then
-    # Fix ownership of shell config if root-owned
-    ensure_writable "$SHELL_CONFIG"
+PATH_ENTRY="export PATH=\"\$HOME/.local/bin:\$PATH\""
 
-    if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-        if [ -f "$SHELL_CONFIG" ]; then
-            if ! grep -q "Added by yterm" "$SHELL_CONFIG"; then
-                echo -e "${BLUE}Updating PATH in ${SHELL_CONFIG}...${NC}"
-                echo -e "\n# Added by yterm\nexport PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$SHELL_CONFIG"
-                echo -e "${GREEN}Added to PATH. Please restart your terminal or run: source ${SHELL_CONFIG}${NC}"
-            fi
-        else
-            echo -e "${BLUE}Creating ${SHELL_CONFIG} and updating PATH...${NC}"
-            echo -e "# Added by yterm\nexport PATH=\"\$HOME/.local/bin:\$PATH\"" > "$SHELL_CONFIG"
-            echo -e "${GREEN}Created ${SHELL_CONFIG} and added to PATH.${NC}"
+for shell_file in "${TARGET_FILES[@]}"; do
+    ensure_writable "$shell_file"
+    if [ -f "$shell_file" ]; then
+        if ! grep -q "Added by yterm" "$shell_file"; then
+            echo -e "${BLUE}Adding yterm to ${shell_file}...${NC}"
+            echo -e "\n# Added by yterm\n${PATH_ENTRY}" >> "$shell_file"
         fi
     fi
+done
+
+# If no files existed, create .zshrc as a default
+if [ ${#TARGET_FILES[@]} -eq 0 ] || ([ ! -f "${TARGET_FILES[0]}" ] && [ ! -f "${TARGET_FILES[1]}" ]); then
+    DEFAULT_CONF="$HOME/.zshrc"
+    if [[ "$SHELL" == *"bash"* ]]; then DEFAULT_CONF="$HOME/.bash_profile"; fi
+    echo -e "${BLUE}Creating ${DEFAULT_CONF}...${NC}"
+    echo -e "# Added by yterm\n${PATH_ENTRY}" > "$DEFAULT_CONF"
 fi
 
 echo -e "${GREEN}✅ yterm is ready!${NC}"
-echo -e "\n${BLUE}--- QUICK START GUIDE ---${NC}"
 
-if [ "$IS_WSL" -eq 1 ]; then
-    echo -e "Windows Users: First type ${GREEN}wsl${NC} and press Enter to enter your Linux environment."
+# Final Verification
+if ! command -v yterm &> /dev/null && [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+    echo -e "${RED}⚠️  ACTION REQUIRED: yterm is installed but not yet in your current PATH.${NC}"
+    echo -e "Please run this command now:"
+    echo -e "   ${BLUE}export PATH=\"\$HOME/.local/bin:\$PATH\"${NC}"
+    echo -e "Then run 'yterm' to start."
+else
+    echo -e "\n${BLUE}--- QUICK START GUIDE ---${NC}"
+    if [ "$IS_WSL" -eq 1 ]; then
+        echo -e "Windows Users: First type ${GREEN}wsl${NC} and press Enter to enter your Linux environment."
+    fi
+    echo -e "1. ${GREEN}Search${NC}  : yterm \"search query\""
+    echo -e "2. ${GREEN}Playlist${NC}: Use ${BLUE}TAB${NC} to select multiple videos."
+    echo -e "3. ${GREEN}Play${NC}     : Hit ${BLUE}ENTER${NC}."
+    echo -e "4. ${GREEN}Skip${NC}     : Press ${BLUE}q${NC} to skip to the next video."
+    echo -e "-------------------------"
+    echo -e "If things don't work, run: ${BLUE}yterm --update${NC}"
 fi
-
-echo -e "1. ${GREEN}Search${NC}  : yterm \"search query\""
-echo -e "2. ${GREEN}Playlist${NC}: Use ${BLUE}TAB${NC} to select multiple videos."
-echo -e "3. ${GREEN}Play${NC}     : Hit ${BLUE}ENTER${NC}."
-echo -e "4. ${GREEN}Skip${NC}     : Press ${BLUE}q${NC} to skip to the next video."
-echo -e "-------------------------"
-echo -e "If things don't work, run: ${BLUE}yterm --update${NC}"
