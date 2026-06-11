@@ -9,6 +9,13 @@ set -e
 VERSION="2.5.0"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
+get_real_curl() {
+    if [ -f "/usr/bin/curl" ]; then echo "/usr/bin/curl"; return; fi
+    if [ -f "/bin/curl" ]; then echo "/bin/curl"; return; fi
+    echo "curl"
+}
+CURL_CMD=$(get_real_curl)
+
 # Enhanced Stability flags for 2026/WSL 
 COMMON_FLAGS="-4 --no-check-certificate --socket-timeout 10 --geo-bypass"
 
@@ -43,6 +50,7 @@ OPTIONS:
     -h, --help      Show this help message
     -v, --version   Show version information
     -u, --update    Full update (Engine, OS packages, and yterm script)
+    -x, --uninstall Remove yterm from your system
 
 CONTROLS:
     1. SEARCH MENU:
@@ -61,6 +69,11 @@ EOF
 case "$1" in
     -h|--help) show_help; exit 0 ;;
     -v|--version) echo "yterm v$VERSION"; exit 0 ;;
+    -x|--uninstall)
+        echo "Uninstalling yterm..."
+        bash -c "$($CURL_CMD -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/uninstall_yterm.sh)"
+        exit 0
+        ;;
     -u|--update)
         echo "Starting Full Update..."
         # Use GITHUB_TOKEN environment variable if available for private repo support
@@ -75,13 +88,13 @@ case "$1" in
             fi
         elif command -v apt &> /dev/null; then
             echo "Updating via apt..."
-            sudo apt update && sudo apt install -y fzf mpv ffmpeg command curl nodejs
+            sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
             if dpkg -l | grep -q yt-dlp; then
                 echo "Removing outdated apt version of yt-dlp..."
                 sudo apt remove -y yt-dlp
             fi
             echo "Installing latest standalone yt-dlp..."
-            sudo command curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+            sudo $CURL_CMD -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
             sudo chmod a+rx /usr/local/bin/yt-dlp
         fi
         
@@ -91,9 +104,9 @@ case "$1" in
         
         # Use token if available for private repo support
         if [ -n "$TOKEN" ]; then
-            command curl -sSL -H "Authorization: token $TOKEN" https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
+            $CURL_CMD -sSL -H "Authorization: token $TOKEN" https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
         else
-            command curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
+            $CURL_CMD -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
         fi
         
         chmod +x "$INSTALL_DIR/yterm"
