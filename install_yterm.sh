@@ -93,7 +93,7 @@ elif [[ "${OS}" == "Darwin"* ]]; then
         echo -e "Homebrew forbids running as root. Run simply as: ${GREEN}curl ... | bash${NC}"
         exit 1
     fi
-    if command -v brew &> /dev/null; then
+    if [ -x "/opt/homebrew/bin/brew" ]; then eval "$(/opt/homebrew/bin/brew shellenv)"; fi; if [ -x "/usr/local/bin/brew" ]; then eval "$(/usr/local/bin/brew shellenv)"; fi; if command -v brew &> /dev/null; then
         echo -e "${BLUE}Installing for macOS via Homebrew...${NC}"
         brew install yt-dlp fzf mpv ffmpeg curl node
         
