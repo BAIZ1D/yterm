@@ -25,9 +25,22 @@ The Terminal YouTube Experience. A high-performance, fuzzy-search YouTube client
 | :--- | :--- | :--- |
 | **Linux** | Standard Terminal | `sudo apt install yt-dlp fzf mpv curl` |
 | **macOS** | Zsh / Terminal | `brew install yt-dlp fzf mpv curl` |
-| **Windows** | **WSL** or **Git Bash** | Install via `apt` (WSL) or manual `.exe` |
+| **Windows** | **WSL** (Recommended) | Install via `apt` (WSL) or manual `.exe` |
 
-*Note: Windows CMD and PowerShell are **not** supported natively. Please use WSL (Ubuntu) for the best experience.*
+> **Note for Windows Users:** Standard PowerShell and CMD cannot run Bash scripts natively. To use `yterm` on Windows, please use **WSL (Ubuntu)** or **Git Bash**.
+
+### 💻 Windows / PowerShell Quick Start
+If you have **WSL** installed, you can install and run `yterm` directly from PowerShell:
+
+**Install via PowerShell (WSL):**
+```powershell
+wsl bash -c "curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash"
+```
+
+**Run via PowerShell (WSL):**
+```powershell
+wsl yterm "your search"
+```
 
 ### 2. One-Command Install
 Run the following command in your terminal (Linux/Mac/WSL):
