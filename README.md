@@ -1,66 +1,75 @@
-# 📺 yterm
+# yterm
 
-Honestly, I was just bored, so I made this. It's a tiny tool that lets you search and play YouTube videos directly in your terminal without any of the clutter.
+```text
+  _   _  _____  _____  ____  __  __ 
+ | | | ||_   _|| ____||  _ \|  \/  |
+ | |_| |  | |  |  _|  | |_) | |\/| |
+  \__, |  | |  | |___ |  _ <| |  | |
+  |___/   |_|  |_____||_| \_\_|  |_|
+```
 
-It uses `fzf` for fuzzy finding, `yt-dlp` to grab the video, and `mpv` to play it. Simple as that.
+Honestly, I was just bored, so I made this. It's a tiny tool that lets you search and play YouTube videos directly in your terminal without any of the clutter. No ads, no tracking, just the terminal.
+
+It uses `fzf` for fuzzy finding, `yt-dlp` to grab the video, and `mpv` to play it. 
+
+Made by **BAIZID AL HAMID**.
 
 ---
 
-## 🛠️ Requirements & Setup
+### Installation (The "I'm lazy" version)
 
-Before you install, make sure you have the basics for your system. The install command will try to grab these for you, but here is what you need:
+These commands will try to grab all the dependencies and set up the script in one go. If things fail, check the "If things go south" section below.
 
-| Platform | Required Tools | Install Command |
-| :--- | :--- | :--- |
-| **Linux (Debian/Ubuntu)** | `yt-dlp`, `fzf`, `mpv`, `curl` | `sudo apt install yt-dlp fzf mpv curl` |
-| **macOS** | `yt-dlp`, `fzf`, `mpv`, `curl` | `brew install yt-dlp fzf mpv curl` |
-| **Windows** | **WSL (Ubuntu)** | `sudo apt install yt-dlp fzf mpv curl` |
-
----
-
-## 🚀 One-Command Install (Copy & Paste)
-
-### 🐧 Linux (Debian / Ubuntu / Mint / Kali)
+**Linux (Debian / Ubuntu / Kali / Mint)**
 ```bash
-sudo apt update && sudo apt install -y curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+sudo apt update && sudo apt install -y yt-dlp fzf mpv curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
-### 🍎 macOS
-*Requires [Homebrew](https://brew.sh/)*
+**macOS**
 ```bash
-curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+brew install yt-dlp fzf mpv curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
-### 🪟 Windows (PowerShell)
-*This will install WSL first if you don't have it. If you do, it just runs the setup.*
+**Windows (PowerShell)**
 ```powershell
-if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "Please restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
+if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y yt-dlp fzf mpv curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
 ```
 
 ---
 
-## ⌨️ How to use it
+### Controls
 
-Search for whatever you want:
+Once you're in the search menu:
+- **Just type**: It filters the 50 results as you go.
+- **TAB**: Select multiple videos (build a queue).
+- **ENTER**: Start playing what you've picked.
+- **CTRL-C**: Kill the current video or quit the app.
+
+---
+
+### If things go south (Troubleshooting)
+
+**SSL / Certificate errors**
+If your terminal starts complaining about "SSL certificate problem" or "expired certificates," it's probably because your system clock is wrong or your certs are ancient. You can force it through by adding `-k` to the curl command:
 ```bash
-yterm "never gonna give you up"
+curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
-**Controls in search:**
-- **Type**: To filter the 50 results.
-- **TAB**: To select multiple videos (build a queue!).
-- **ENTER**: Start playing.
-- **CTRL-C**: Stop current video / Exit.
-
----
-
-## 🌟 Support
-If you actually end up using this, **throw a ⭐ on the repo**. It’s the only way I know people aren’t just looking at my bored experiments.
-
-## 🛠️ Maintenance
-YouTube likes to break things. If search stops working, just run:
+**Search stops working**
+YouTube loves to break things on purpose. If the search stops giving you results, it's usually because the extraction engine needs an update. Fix it with:
 ```bash
 yterm --update
 ```
 
-**Made by BAIZID AL HAMID**
+**Black screen or no sound**
+Make sure `mpv` is actually working on your system. If you're on a server without a screen, obviously this won't show you video.
+
+---
+
+### Support
+
+If you end up using this while you're bored too, throw a star on the repo. It's nice to know people are actually using it.
+
+---
+
+License: Open Source. Do whatever you want with it.
