@@ -79,23 +79,23 @@ if [[ "${OS}" == "Linux"* ]]; then
             sudo apt remove -y yt-dlp
         fi
         echo -e "${BLUE}Installing system dependencies...${NC}"
-        sudo apt update && sudo apt install -y fzf mpv ffmpeg command curl nodejs
+        sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
         
         echo -e "${BLUE}Installing latest standalone yt-dlp binary...${NC}"
         ensure_writable_dir "/usr/local/bin"
-        sudo command curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+        sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
         sudo chmod a+rx /usr/local/bin/yt-dlp
     fi
 elif [[ "${OS}" == "Darwin"* ]]; then
     echo -e "${BLUE}macOS Detected.${NC}"
     if [ "$USER" == "root" ]; then
         echo -e "${RED}Error: Please do NOT run this installer with 'sudo bash' on macOS.${NC}"
-        echo -e "Homebrew forbids running as root. Run simply as: ${GREEN}command curl ... | bash${NC}"
+        echo -e "Homebrew forbids running as root. Run simply as: ${GREEN}curl ... | bash${NC}"
         exit 1
     fi
     if [ -x "/opt/homebrew/bin/brew" ]; then eval "$(/opt/homebrew/bin/brew shellenv)"; fi; if [ -x "/usr/local/bin/brew" ]; then eval "$(/usr/local/bin/brew shellenv)"; fi; if command -v brew &> /dev/null; then
         echo -e "${BLUE}Installing for macOS via Homebrew...${NC}"
-        brew install yt-dlp fzf mpv ffmpeg command curl node
+        brew install yt-dlp fzf mpv ffmpeg curl node
         
         # macOS MPV FIX: Ensure mpv uses yt-dlp explicitly
         echo -e "${BLUE}Configuring mpv for macOS...${NC}"
@@ -120,8 +120,8 @@ INSTALL_DIR="$ACTUAL_HOME/.local/bin"
 ensure_writable_dir "$INSTALL_DIR"
 
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
-command curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm" || \
-command curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm"
+curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm" || \
+curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm"
 
 chmod +x "$INSTALL_DIR/yterm"
 
