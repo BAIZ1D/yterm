@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.3.5
+# Version: 2.3.6
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.3.5"
+VERSION="2.3.6"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # Enhanced Stability flags for 2026/WSL 
@@ -189,13 +189,12 @@ echo "$selected_list" | while read -r selected; do
              # Use a unique socket to avoid conflicts
              MPV_ARGS+=(--input-ipc-server="/tmp/mpv-socket-$(id -u)")
              
-             # NUCLEAR CLEANUP for macOS
-             # 1. Disable hwdec on Mac for AV1 compatibility (fixes red errors)
-             MPV_ARGS+=(--hwdec=no)
-             # 2. Total silence for all messages
-             MPV_ARGS+=(--msg-level=all=no)
-             # 3. Suppress terminal output and status lines
-             MPV_ARGS+=(--no-terminal)
+             # RESTORED SETTINGS for macOS
+             # 1. Use auto-safe (hwdec=no was likely too restrictive for some setups)
+             MPV_ARGS+=(--hwdec=auto-safe)
+             # 2. Quiet the red errors specifically without silencing everything
+             MPV_ARGS+=(--msg-level=ffmpeg/video=error,vo=fatal,ao=fatal)
+             # 3. Use really-quiet but avoid --no-terminal which can cause Error 2
              MPV_ARGS+=(--really-quiet)
              # 4. Hide video info on start
              MPV_ARGS+=(--no-video-osd)
