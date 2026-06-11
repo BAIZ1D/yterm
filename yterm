@@ -162,23 +162,26 @@ echo "$selected_list" | while read -r selected; do
     
     if [ $PLAY_STATUS -ne 0 ]; then
          echo "Launching MPV..."
-         MPV_FLAGS="--user-agent=\"$UA\" --title=\"yterm: $title\""
+         MPV_FLAGS=(
+             "--user-agent=$UA"
+             "--title=yterm: $title"
+         )
          
          # macOS Specific stability flags
          if [ $IS_MAC -eq 1 ]; then
-             MPV_FLAGS="$MPV_FLAGS --input-ipc-server=/tmp/mpv-socket --hwdec=auto"
+             MPV_FLAGS+=("--input-ipc-server=/tmp/mpv-socket" "--hwdec=auto")
          fi
 
          # Performance & Stability flags
-         MPV_FLAGS="$MPV_FLAGS --cache=yes --demuxer-max-bytes=150M --ytdl-format=\"bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best\""
+         MPV_FLAGS+=("--cache=yes" "--demuxer-max-bytes=150M" "--ytdl-format=bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best")
          
          if [ $IS_WSL -eq 1 ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
              echo "No display detected. Playing Audio-Only."
-             MPV_FLAGS="$MPV_FLAGS --no-video"
+             MPV_FLAGS+=("--no-video")
          fi
          
          set +e
-         mpv $MPV_FLAGS "$url"
+         mpv "${MPV_FLAGS[@]}" "$url"
          MPV_EXIT=$?
          set -e
          
