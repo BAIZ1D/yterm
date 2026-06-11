@@ -1,3 +1,5 @@
+<div align="center">
+
 # yterm
 
 ```text
@@ -8,105 +10,123 @@
   |___/   |_|  |_____||_| \_\_|  |_|
 ```
 
-Honestly, I was just bored, so I made this. It's a tiny tool that lets you search and play YouTube videos directly in your terminal without any of the clutter. No ads, no tracking, just the terminal.
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=20&pause=1000&color=3498DB&center=true&vCenter=true&width=600&lines=Search+YouTube+from+the+terminal.;No+ads.+No+tracking.+Just+video.;fzf+%2B+yt-dlp+%2B+mpv.)](https://git.io/typing-svg)
 
-It uses `fzf` for fuzzy finding, the latest standalone `yt-dlp` to grab the video, and `mpv` to play it. 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![OS Support](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20WSL-lightgrey.svg)]()
+[![Language](https://img.shields.io/badge/Language-Bash-green.svg)]()
 
-Made by **BAIZID AL HAMID**.
+**A minimalist, distraction-free YouTube client for power users.**
+
+</div>
 
 ---
 
-### Installation (The "I'm lazy" version)
+## Overview
 
-These commands will handle everything: uninstalling outdated system tools, installing the latest standalone engine, grabbing Node.js for security bypasses, and setting up the script.
+**yterm** is a command-line utility designed for users who want to search, queue, and watch YouTube videos without leaving the terminal. It strips away the modern web interface, removing advertisements, tracking scripts, and algorithmic suggestions. 
 
-**Linux (Debian / Ubuntu / Kali / Mint)**
+By tying together the most robust open-source media tools, **yterm** delivers a seamless media experience directly from your shell.
+
+### Core Architecture
+- **Search and UI:** Powered by `fzf` for instantaneous, fuzzy-finding menu navigation.
+- **Extraction:** Utilizes the latest standalone `yt-dlp` to bypass modern anti-bot protections.
+- **Playback:** Handled by `mpv` for lightweight, hardware-accelerated video rendering.
+
+---
+
+## Installation
+
+The installation script automates the resolution of system dependencies, ensures the correct standalone binaries are present, and configures the tool for your specific operating system.
+
+### Linux (Debian / Ubuntu / Kali / Mint)
 ```bash
-sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs && /usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
-**macOS**
+### macOS
 ```bash
-brew install yt-dlp fzf mpv ffmpeg curl node && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+brew install yt-dlp fzf mpv ffmpeg curl node && /usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
-**Windows (PowerShell)**
-*This installs WSL first if you don't have it. If you do, it enters WSL and sets up yterm.*
+### Windows (PowerShell)
+This command detects the presence of the Windows Subsystem for Linux (WSL). If absent, it installs WSL. If present, it routes the installation directly into your Linux environment.
 ```powershell
-if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
+if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs && /usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
 ```
 
 ---
 
-### How to use it (The Quick Guide)
+## Usage Guide
 
-**1. Searching**
-- **Linux/Mac**: Just run `yterm "query"`.
-- **Windows (PowerShell)**: 
-  1. Type `wsl` and press Enter to enter your Linux shell.
-  2. Run `yterm "query"`.
+**yterm** is designed to be intuitive. 
 
-**2. Building a Playlist (Queueing)**
-Don't just play one video. Use **TAB** to select multiple videos from the list. Each one you hit TAB on will be added to your temporary playlist. Hit **ENTER** when you're ready to start the show.
+### 1. Searching
+Execute the command followed by your search query.
+- **Linux / macOS:** 
+  ```bash
+  yterm "your search query here"
+  ```
+- **Windows (PowerShell):** 
+  ```powershell
+  wsl yterm "your search query here"
+  ```
 
-**3. Controls & Skipping**
-- **To Skip**: Press **q** on your keyboard to skip to the next video.
-- **To Stop Everything**: Press **CTRL-C** in your terminal window.
+### 2. Queueing a Playlist
+You are not limited to a single video.
+- Navigate the search results using your arrow keys.
+- Press **`TAB`** to select multiple videos and build a custom queue.
+- Press **`ENTER`** to begin playback.
+
+### 3. Playback Controls
+- **Skip Track:** Press **`q`** in the terminal to terminate the current video and advance to the next item in your queue.
+- **Terminate Application:** Press **`CTRL-C`** to halt playback and exit the application entirely.
 
 ---
 
-### If things go south (Troubleshooting)
+## Troubleshooting and Maintenance
 
-**Windows (WSL) - Audio & Performance**
-WSL is great, but its not perfect. You might experience:
-- **Audio Bugs**: Crackling or delayed audio. This is usually a WSL/PulseAudio sync issue.
-- **Terminal Jitters**: The interface might feel "laggy" compared to native Linux/Mac.
-- **Fix**: Ensure your Windows is up to date and you are using **WSL 2**. If audio is still broken, try running `yterm --update` to refresh dependencies.
-
-
-**Search stops working / Fetches hang**
-YouTube 2026 uses a "PoToken" to block bots. `yterm` handles this by using **Node.js** and the latest **yt-dlp standalone binary**. If things hang, run:
+### System Updates
+YouTube frequently updates its bot-protection mechanisms. If searches begin to fail or hang, you must synchronize your extraction engine. Run the following command to update your system packages and fetch the latest standalone `yt-dlp` binary:
 ```bash
 yterm --update
 ```
-This command is nuclear. It updates your system packages (`apt`), swaps your engine for the latest standalone version, and updates the `yterm` script itself.
 
-**SSL / Certificate errors**
-If your terminal complains about certificates, add `-k` to the curl command:
+### Windows Audio and Performance
+If utilizing WSL, you may encounter audio desynchronization or UI latency.
+- Ensure you are operating on **WSL 2**.
+- Validate your Windows host is fully updated to ensure PulseAudio compatibility.
+- Execute `yterm --update` to guarantee the latest media libraries are present in your subsystem.
+
+### Certificate Errors
+In environments with strict proxy filtering or outdated certificates, bypass SSL verification warnings by appending the insecure flag:
 ```bash
-curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+/usr/bin/env curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 ---
 
-### Support
+## Version Management
 
-If you end up using this while you're bored too, throw a star on the repo. It's nice to know people are actually using it.
-
----
-
-License: Open Source. Do whatever you want with it.
-
-<!-- 
-Keywords for search engines:
-youtube terminal client, cli youtube player, bash youtube search, yterm, baizid al hamid, 
-terminal video player, fzf youtube, linux youtube tool, macos youtube cli, wsl youtube player
--->
-
----
-
-### Install Specific Version
-If you need to install a specific version of yterm, you can use the `YTERM_VERSION` environment variable:
-
+### Installing a Specific Version
+To pin your installation to a known, stable release, utilize the `YTERM_VERSION` variable:
 ```bash
-YTERM_VERSION=v2.4.2 bash -c "$(curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh)"
+YTERM_VERSION=v2.4.2 bash -c "$(/usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh)"
 ```
-
----
 
 ### Uninstallation
-If you ever want to remove `yterm` and clean up your `PATH`, simply run the uninstaller script:
-
+To cleanly remove the application binary and scrub the `PATH` entries from your shell configuration files:
 ```bash
-bash -c "$(curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/uninstall_yterm.sh)"
+yterm --uninstall
 ```
+*Alternatively, run the uninstaller directly:*
+```bash
+bash -c "$(/usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/uninstall_yterm.sh)"
+```
+
+---
+
+<div align="center">
+  <p>Engineered by <strong>BAIZID AL HAMID</strong></p>
+  <p>Licensed under the MIT License</p>
+</div>
