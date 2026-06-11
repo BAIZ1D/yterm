@@ -19,39 +19,52 @@ if grep -qE "(Microsoft|microsoft|WSL)" /proc/version 2>/dev/null; then
     IS_WSL=1
 fi
 
-# 2. Permission Rescue Function (Aggressive)
-ensure_writable() {
+# 2. Permission Rescue Functions
+ensure_writable_dir() {
     local target="$1"
     if [ -z "$target" ]; then return; fi
 
-    # Nuclear Check: If a parent is a file instead of a directory
-    if [ -f "$target" ]; then
-        echo -e "${RED}Error: ${target} exists but is a file. Removing to create directory...${NC}"
-        sudo rm -f "$target"
-    fi
-
-    # Fix existing but un-writable targets
     if [ -e "$target" ]; then
+        if [ ! -d "$target" ]; then
+            echo -e "${RED}Warning: ${target} exists but is a file. Cannot create directory.${NC}"
+            return
+        fi
         if [ ! -w "$target" ]; then
-            echo -e "${BLUE}Fixing permissions for ${target}...${NC}"
-            sudo chown -R "$USER" "$target"
-            sudo chmod -R u+w "$target"
+            echo -e "${BLUE}Fixing permissions for directory ${target}...${NC}"
+            sudo chown -R "$USER" "$target" 2>/dev/null || true
+            sudo chmod -R u+w "$target" 2>/dev/null || true
         fi
     else
-        # Target doesn't exist. Check parent.
         local parent
         parent=$(dirname "$target")
-        
-        # Recursive fix for parents
         if [ "$parent" != "$HOME" ] && [ "$parent" != "/" ] && [ "$parent" != "." ]; then
-            ensure_writable "$parent"
+            ensure_writable_dir "$parent"
         fi
-        
-        # Now try creating
-        if [ ! -d "$target" ]; then
-            echo -e "${BLUE}Creating directory: ${target}${NC}"
-            mkdir -p "$target" 2>/dev/null || (sudo mkdir -p "$target" && sudo chown "$USER" "$target")
+        echo -e "${BLUE}Creating directory: ${target}${NC}"
+        mkdir -p "$target" 2>/dev/null || (sudo mkdir -p "$target" && sudo chown "$USER" "$target")
+    fi
+}
+
+ensure_writable_file() {
+    local target="$1"
+    if [ -z "$target" ]; then return; fi
+
+    local parent
+    parent=$(dirname "$target")
+    ensure_writable_dir "$parent"
+
+    if [ -e "$target" ]; then
+        if [ -d "$target" ]; then
+            echo -e "${RED}Error: ${target} is a directory. Removing to restore file functionality...${NC}"
+            sudo rm -rf "$target"
+            touch "$target" 2>/dev/null || (sudo touch "$target" && sudo chown "$USER" "$target")
+        elif [ ! -w "$target" ]; then
+            echo -e "${BLUE}Fixing permissions for file ${target}...${NC}"
+            sudo chown "$USER" "$target" 2>/dev/null || true
+            sudo chmod u+w "$target" 2>/dev/null || true
         fi
+    else
+        touch "$target" 2>/dev/null || (sudo touch "$target" && sudo chown "$USER" "$target")
     fi
 }
 
@@ -69,7 +82,7 @@ if [[ "${OS}" == "Linux"* ]]; then
         sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
         
         echo -e "${BLUE}Installing latest standalone yt-dlp binary...${NC}"
-        ensure_writable "/usr/local/bin"
+        ensure_writable_dir "/usr/local/bin"
         sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
         sudo chmod a+rx /usr/local/bin/yt-dlp
     fi
@@ -86,10 +99,11 @@ elif [[ "${OS}" == "Darwin"* ]]; then
         
         # macOS MPV FIX: Ensure mpv uses yt-dlp explicitly
         echo -e "${BLUE}Configuring mpv for macOS...${NC}"
-        ensure_writable "$HOME/.config/mpv"
+        ensure_writable_dir "$HOME/.config/mpv"
         
         CONFIG_FILE="$HOME/.config/mpv/mpv.conf"
-        if [ ! -f "$CONFIG_FILE" ] || ! grep -q "ytdl_path=yt-dlp" "$CONFIG_FILE"; then
+        ensure_writable_file "$CONFIG_FILE"
+        if ! grep -q "ytdl_path=yt-dlp" "$CONFIG_FILE"; then
             echo "script-opts=ytdl_hook-ytdl_path=yt-dlp" >> "$CONFIG_FILE"
             echo "ytdl-format=\"bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best\"" >> "$CONFIG_FILE"
         fi
@@ -100,8 +114,10 @@ elif [[ "${OS}" == "Darwin"* ]]; then
 fi
 
 # 4. Installation
-INSTALL_DIR="$HOME/.local/bin"
-ensure_writable "$INSTALL_DIR"
+ACTUAL_USER="${SUDO_USER:-$USER}"
+ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
+INSTALL_DIR="$ACTUAL_HOME/.local/bin"
+ensure_writable_dir "$INSTALL_DIR"
 
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
 curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm" || \
@@ -122,7 +138,7 @@ fi
 PATH_ENTRY="export PATH=\"\$HOME/.local/bin:\$PATH\""
 
 for shell_file in "${TARGET_FILES[@]}"; do
-    ensure_writable "$shell_file"
+    ensure_writable_file "$shell_file"
     if [ -f "$shell_file" ]; then
         if ! grep -q "Added by yterm" "$shell_file"; then
             echo -e "${BLUE}Adding yterm to ${shell_file}...${NC}"
@@ -135,6 +151,7 @@ done
 if [ ${#TARGET_FILES[@]} -eq 0 ] || ([ ! -f "${TARGET_FILES[0]}" ] && [ ! -f "${TARGET_FILES[1]}" ]); then
     DEFAULT_CONF="$HOME/.zshrc"
     if [[ "$SHELL" == *"bash"* ]]; then DEFAULT_CONF="$HOME/.bash_profile"; fi
+    ensure_writable_file "$DEFAULT_CONF"
     echo -e "${BLUE}Creating ${DEFAULT_CONF}...${NC}"
     echo -e "# Added by yterm\n${PATH_ENTRY}" > "$DEFAULT_CONF"
 fi
