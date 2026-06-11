@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.2.4
+# Version: 2.2.5
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.2.4"
+VERSION="2.2.5"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
-# Enhanced Stability flags for 2026/WSL 
-STABILITY_FLAGS="-4 --no-check-certificate --socket-timeout 30 --extractor-args youtube:player_client=ios,android,web"
 
 # --- Signal Handling ---
 trap "echo -e '\nExiting yterm...'; exit 0" SIGINT SIGTERM
 
-# --- WSL Detection ---
+# --- Platform Detection ---
 IS_WSL=0
 if grep -qE "(Microsoft|microsoft|WSL)" /proc/version 2>/dev/null; then
     IS_WSL=1
 fi
+
+# Stability flags for 2026/WSL 
+# We force IPv4 (-4) and a shorter timeout to trigger retries faster if it hangs.
+COMMON_FLAGS="-4 --no-check-certificate --socket-timeout 10 --geo-bypass"
 
 show_help() {
     cat << EOF
@@ -31,12 +32,12 @@ USAGE:
 OPTIONS:
     -h, --help      Show this help message
     -v, --version   Show version information
-    -u, --update    Update the app, yt-dlp, and system dependencies
+    -u, --update    Update the app, yt-dlp (Nightly), and system packages
 
 CONTROLS:
     1. SEARCH MENU:
-       - Just type   : Filter the results instantly.
-       - TAB         : Select/Deselect videos to build a playlist.
+       - Just type   : Filter results.
+       - TAB         : Select multiple videos for a queue.
        - ENTER       : Start playing.
 
     2. DURING PLAYBACK:
@@ -51,15 +52,15 @@ case "$1" in
     -h|--help) show_help; exit 0 ;;
     -v|--version) echo "yterm v$VERSION"; exit 0 ;;
     -u|--update)
-        echo "Updating system dependencies (Apt)..."
-        sudo apt update && sudo apt install -y yt-dlp fzf mpv curl nodejs
-        echo "Updating yt-dlp to latest (Nightly)..."
+        echo "Updating system packages..."
+        sudo apt update && sudo apt install -y yt-dlp fzf mpv curl nodejs || true
+        echo "Forcing yt-dlp to latest Nightly build (Required for 2026 fix)..."
         sudo yt-dlp --update-to nightly || sudo yt-dlp -U
         echo "Downloading latest yterm script..."
         INSTALL_DIR="$HOME/.local/bin"
         curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
         chmod +x "$INSTALL_DIR/yterm"
-        echo "Update complete!"
+        echo "Update complete! You are now on v$VERSION"
         exit 0
         ;;
 esac
@@ -77,25 +78,21 @@ check_tool "yt-dlp"
 check_tool "fzf"
 check_tool "mpv"
 
-# Ensure a JS runtime is available for YouTube's PoToken
-if ! command -v node &> /dev/null && ! command -v deno &> /dev/null; then
-    echo "⚠️  WARNING: No JavaScript runtime (Node.js or Deno) detected."
-    echo "YouTube might block stream extraction. Attempting to install Node.js..."
-    sudo apt update && sudo apt install -y nodejs || echo "Manual install of nodejs recommended."
-fi
+export YTDLP_JS_RUNTIMES="node"
 
 echo "Searching YouTube for: $*..."
+# Try searching with standard flags
 # shellcheck disable=SC2086
-results=$(yt-dlp $STABILITY_FLAGS "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null)
+results=$(yt-dlp $COMMON_FLAGS "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null || echo "")
 
 if [ -z "$results" ]; then
-    echo "No results found. Trying one more time with different settings..."
-    # shellcheck disable=SC2086
-    results=$(yt-dlp -4 "ytsearch10:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null)
+    echo "Primary search failed. Trying alternate search..."
+    results=$(yt-dlp -4 --extractor-args "youtube:player-client=mweb" "ytsearch20:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null || echo "")
 fi
 
 if [ -z "$results" ]; then
-    echo "Still no results. YouTube might be blocking your IP. Try 'yterm --update'."
+    echo "No results found. YouTube is likely blocking this connection."
+    echo "Try running: yterm --update"
     exit 1
 fi
 
@@ -115,17 +112,28 @@ echo "$selected_list" | while read -r selected; do
     echo "[$current/$total] Playing: $title"
     echo "------------------------------------------------"
 
-    echo "Fetching stream..."
-    # Force mobile client for extraction phase
+    echo "Fetching stream (this can take 5-10s in WSL)..."
+    
+    # TRY 1: Modern Web Extraction
     # shellcheck disable=SC2086
-    stream_url=$(yt-dlp $STABILITY_FLAGS -g --user-agent "$UA" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
+    stream_url=$(yt-dlp $COMMON_FLAGS -g --user-agent "$UA" --extractor-args "youtube:player-client=web,mweb" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
 
+    # TRY 2: Mobile Client Bypass (Less bot detection)
     if [ -z "$stream_url" ]; then
+        echo "Retrying with Mobile-Client bypass..."
         # shellcheck disable=SC2086
-        stream_url=$(yt-dlp $STABILITY_FLAGS -g -f 18 "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
+        stream_url=$(yt-dlp $COMMON_FLAGS -g --extractor-args "youtube:player-client=ios,android" -f "best" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
+    fi
+
+    # TRY 3: The "Nuclear" Option (Force HLS/M3U8) - Most reliable for WSL hangs
+    if [ -z "$stream_url" ]; then
+        echo "Still hanging? Forcing HLS Protocol (Protocol Bypass)..."
+        # shellcheck disable=SC2086
+        stream_url=$(yt-dlp $COMMON_FLAGS -g --extractor-args "youtube:player-client=web" -f "best[protocol^=m3u8]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
     fi
 
     if [ -n "$stream_url" ]; then
+        # Check for Terminology
         if command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
             echo "Launching Terminology popup..."
             set +e; typop "$stream_url"; PLAY_STATUS=$?; set -e
@@ -140,11 +148,16 @@ echo "$selected_list" | while read -r selected; do
                  echo "No display detected. Playing Audio-Only."
                  MPV_FLAGS="$MPV_FLAGS --no-video"
              fi
+             # Force MPV to be more patient with stream loading
+             MPV_FLAGS="$MPV_FLAGS --cache=yes --demuxer-max-bytes=100M"
+             
              set +e
              mpv $MPV_FLAGS "$stream_url"
              set -e
         fi
     else
-        echo "Error: Could not extract stream URL. Try 'yterm --update'."
+        echo "Critical Error: Could not extract stream URL for this video."
+        echo "Reason: YouTube's 2026 'PoToken' security is blocking WSL."
+        echo "Fix: Sign in to YouTube in your Windows browser and try again, or run 'yterm --update'."
     fi
 done
