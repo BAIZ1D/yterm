@@ -10,7 +10,7 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}📺 yterm: The "Boredom" Installation Script${NC}"
+echo -e "${BLUE}📺 yterm: The \"Boredom\" Installation Script${NC}"
 
 # 1. Platform Detection
 OS="$(uname -s)"
@@ -53,7 +53,6 @@ elif [[ "${OS}" == "Darwin"* ]]; then
 fi
 
 # 3. Installation
-# We install to the user's home to avoid permission/security issues on macOS
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
@@ -63,7 +62,7 @@ curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTAL
 
 chmod +x "$INSTALL_DIR/yterm"
 
-# 4. PATH Setup
+# 4. PATH Setup & Ownership Fix
 SHELL_CONFIG=""
 if [[ "$SHELL" == *"zsh"* ]]; then 
     SHELL_CONFIG="$HOME/.zshrc"
@@ -71,18 +70,28 @@ elif [[ "$SHELL" == *"bash"* ]]; then
     SHELL_CONFIG="$HOME/.bashrc"
 fi
 
-if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    if [ -n "$SHELL_CONFIG" ] && [ -f "$SHELL_CONFIG" ]; then
-        echo -e "${BLUE}Updating PATH in ${SHELL_CONFIG}...${NC}"
-        # No sudo here to avoid changing file ownership to root (causes zsh security warnings)
-        if [[ ! $(grep -q "Added by yterm" "$SHELL_CONFIG" 2>/dev/null) ]]; then
-            echo -e "\n# Added by yterm\nexport PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$SHELL_CONFIG"
-            echo -e "${GREEN}Added to PATH via ${SHELL_CONFIG}. Restart your terminal or run 'source ${SHELL_CONFIG}'${NC}"
-        fi
-    else
-        echo -e "${RED}Warning: Could not auto-detect shell config. Please add ${INSTALL_DIR} to your PATH manually.${NC}"
-        echo -e "Add this line to your .zshrc or .bashrc: ${BLUE}export PATH=\"\$HOME/.local/bin:\$PATH\"${NC}"
+if [ -n "$SHELL_CONFIG" ]; then
+    # Fix ownership if it was accidentally changed to root by a previous sudo run
+    if [ -f "$SHELL_CONFIG" ] && [ ! -w "$SHELL_CONFIG" ]; then
+        echo -e "${BLUE}Fixing permissions for ${SHELL_CONFIG}...${NC}"
+        sudo chown "$USER" "$SHELL_CONFIG"
     fi
+
+    if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+        if [ -f "$SHELL_CONFIG" ]; then
+            if ! grep -q "Added by yterm" "$SHELL_CONFIG"; then
+                echo -e "${BLUE}Updating PATH in ${SHELL_CONFIG}...${NC}"
+                echo -e "\n# Added by yterm\nexport PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$SHELL_CONFIG"
+                echo -e "${GREEN}Added to PATH. Please restart your terminal or run: source ${SHELL_CONFIG}${NC}"
+            fi
+        else
+            echo -e "${BLUE}Creating ${SHELL_CONFIG} and updating PATH...${NC}"
+            echo -e "# Added by yterm\nexport PATH=\"\$HOME/.local/bin:\$PATH\"" > "$SHELL_CONFIG"
+            echo -e "${GREEN}Created ${SHELL_CONFIG} and added to PATH.${NC}"
+        fi
+    fi
+else
+    echo -e "${RED}Warning: Could not detect shell config. Manually add ${INSTALL_DIR} to your PATH.${NC}"
 fi
 
 echo -e "${GREEN}✅ yterm is ready!${NC}"
@@ -97,4 +106,4 @@ echo -e "2. ${GREEN}Playlist${NC}: Use ${BLUE}TAB${NC} to select multiple videos
 echo -e "3. ${GREEN}Play${NC}     : Hit ${BLUE}ENTER${NC}."
 echo -e "4. ${GREEN}Skip${NC}     : Press ${BLUE}q${NC} to skip to the next video."
 echo -e "-------------------------"
-echo -e "If search ever stops working, just run: ${BLUE}yterm --update${NC}"
+echo -e "If things don't work, run: ${BLUE}yterm --update${NC}"

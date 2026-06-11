@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.3.1
+# Version: 2.3.2
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.3.1"
+VERSION="2.3.2"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # Enhanced Stability flags for 2026/WSL 
@@ -15,10 +15,15 @@ COMMON_FLAGS="-4 --no-check-certificate --socket-timeout 10 --geo-bypass"
 # --- Signal Handling ---
 trap "echo -e '\nExiting yterm...'; exit 0" SIGINT SIGTERM
 
-# --- WSL Detection ---
+# --- Environment Detection ---
 IS_WSL=0
 if grep -qE "(Microsoft|microsoft|WSL)" /proc/version 2>/dev/null; then
     IS_WSL=1
+fi
+
+IS_MAC=0
+if [[ "$(uname)" == "Darwin" ]]; then
+    IS_MAC=1
 fi
 
 show_help() {
@@ -51,26 +56,29 @@ case "$1" in
     -h|--help) show_help; exit 0 ;;
     -v|--version) echo "yterm v$VERSION"; exit 0 ;;
     -u|--update)
-        echo "Updating system packages..."
-        if command -v apt &> /dev/null; then
+        echo "Starting Full Update..."
+        if [ $IS_MAC -eq 1 ]; then
+            if command -v brew &> /dev/null; then
+                echo "Updating via Homebrew..."
+                brew update && brew upgrade yt-dlp fzf mpv ffmpeg node
+            else
+                echo "Error: Homebrew not found. Cannot update system packages."
+            fi
+        elif command -v apt &> /dev/null; then
+            echo "Updating via apt..."
             sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
             if dpkg -l | grep -q yt-dlp; then
                 echo "Removing outdated apt version of yt-dlp..."
                 sudo apt remove -y yt-dlp
             fi
-        fi
-        echo "Updating yt-dlp to latest (Nightly)..."
-        if [ -f /usr/local/bin/yt-dlp ]; then
-            sudo /usr/local/bin/yt-dlp --update-to nightly || sudo /usr/local/bin/yt-dlp -U
-        elif command -v yt-dlp &> /dev/null; then
-            sudo yt-dlp --update-to nightly || sudo yt-dlp -U
-        else
-            echo "Installing latest standalone yt-dlp binary..."
+            echo "Installing latest standalone yt-dlp..."
             sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
             sudo chmod a+rx /usr/local/bin/yt-dlp
         fi
+        
         echo "Downloading latest yterm script..."
         INSTALL_DIR="$HOME/.local/bin"
+        mkdir -p "$INSTALL_DIR"
         curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
         chmod +x "$INSTALL_DIR/yterm"
         echo "Update complete! You are now on v$VERSION"
@@ -84,6 +92,11 @@ if [ -z "$1" ]; then show_help; exit 1; fi
 check_tool() {
     if ! command -v "$1" &> /dev/null; then
         echo "Error: Required dependency '$1' is not installed."
+        if [ $IS_MAC -eq 1 ]; then
+            echo "Fix: brew install $1"
+        else
+            echo "Fix: sudo apt install $1"
+        fi
         exit 1
     fi
 }
@@ -96,17 +109,23 @@ export YTDLP_JS_RUNTIMES="node"
 
 echo "Searching YouTube for: $*..."
 # Try searching with standard flags
-# shellcheck disable=SC2086
-results=$(yt-dlp $COMMON_FLAGS "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null || echo "")
+# We remove 2>/dev/null to show errors if YouTube is blocking
+set +e
+results=$(yt-dlp $COMMON_FLAGS "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]")
+SEARCH_EXIT=$?
+set -e
 
-if [ -z "$results" ]; then
+if [ $SEARCH_EXIT -ne 0 ] || [ -z "$results" ]; then
     echo "Primary search failed. Trying alternate search..."
-    results=$(yt-dlp -4 --extractor-args "youtube:player-client=mweb" "ytsearch20:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null || echo "")
+    set +e
+    results=$(yt-dlp -4 --extractor-args "youtube:player-client=mweb" "ytsearch20:$*" --flat-playlist --print "%(title)s [%(id)s]")
+    SEARCH_EXIT=$?
+    set -e
 fi
 
-if [ -z "$results" ]; then
-    echo "No results found. YouTube is likely blocking this connection."
-    echo "Try running: yterm --update"
+if [ $SEARCH_EXIT -ne 0 ] || [ -z "$results" ]; then
+    echo "Error: Search failed. YouTube might be blocking your connection."
+    echo "Check if your yt-dlp is up to date: yterm --update"
     exit 1
 fi
 
@@ -127,7 +146,8 @@ echo "$selected_list" | while read -r selected; do
     echo "[$current/$total] Playing: $title"
     echo "------------------------------------------------"
 
-    if command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
+    # Terminology Support (Linux only)
+    if [ $IS_MAC -eq 0 ] && command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
         echo "Fetching stream for Terminology..."
         stream_url=$(yt-dlp $COMMON_FLAGS -g --user-agent "$UA" -f "best[ext=mp4]" "$url" 2>/dev/null || echo "")
         if [ -n "$stream_url" ]; then
@@ -142,11 +162,13 @@ echo "$selected_list" | while read -r selected; do
     
     if [ $PLAY_STATUS -ne 0 ]; then
          echo "Launching MPV..."
-         # We pass the YouTube URL directly to MPV. 
-         # MPV uses its internal ytdl hook to call yt-dlp, which is 100% more reliable
-         # than passing extracted stream URLs which often expire or hit 403 Forbidden.
          MPV_FLAGS="--user-agent=\"$UA\" --title=\"yterm: $title\""
          
+         # macOS Specific stability flags
+         if [ $IS_MAC -eq 1 ]; then
+             MPV_FLAGS="$MPV_FLAGS --input-ipc-server=/tmp/mpv-socket --hwdec=auto"
+         fi
+
          # Performance & Stability flags
          MPV_FLAGS="$MPV_FLAGS --cache=yes --demuxer-max-bytes=150M --ytdl-format=\"bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best\""
          
@@ -157,6 +179,12 @@ echo "$selected_list" | while read -r selected; do
          
          set +e
          mpv $MPV_FLAGS "$url"
+         MPV_EXIT=$?
          set -e
+         
+         if [ $MPV_EXIT -ne 0 ] && [ $MPV_EXIT -ne 4 ]; then
+             echo "MPV exited with error code $MPV_EXIT. Checking for yt-dlp issues..."
+             yt-dlp --version
+         fi
     fi
 done
