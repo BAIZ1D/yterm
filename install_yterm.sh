@@ -19,48 +19,42 @@ if grep -qE "(Microsoft|microsoft|WSL)" /proc/version 2>/dev/null; then
     IS_WSL=1
 fi
 
-case "${OS}" in
-    Linux*)     DISTRO="Linux";;
-    Darwin*)    DISTRO="Mac";;
-    *)          DISTRO="Unknown"
-esac
-
 # 2. Advanced Dependency Management
 echo -e "${BLUE}Checking dependencies...${NC}"
 
-if [ "$DISTRO" == "Linux" ] && command -v apt &> /dev/null; then
-    echo -e "${BLUE}Optimizing yt-dlp for Linux/WSL...${NC}"
-    # Remove often outdated apt version
-    if dpkg -l | grep -q yt-dlp; then
-        echo -e "${RED}Removing outdated yt-dlp from apt...${NC}"
-        sudo apt remove -y yt-dlp
+if [[ "${OS}" == "Linux"* ]]; then
+    if command -v apt &> /dev/null; then
+        echo -e "${BLUE}Optimizing yt-dlp for Linux/WSL...${NC}"
+        if dpkg -l | grep -q yt-dlp; then
+            echo -e "${RED}Removing outdated yt-dlp from apt...${NC}"
+            sudo apt remove -y yt-dlp
+        fi
+        echo -e "${BLUE}Installing system dependencies...${NC}"
+        sudo apt update && sudo apt install -y fzf mpv curl nodejs
+        
+        echo -e "${BLUE}Installing latest standalone yt-dlp binary...${NC}"
+        sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+        sudo chmod a+rx /usr/local/bin/yt-dlp
     fi
-    
-    echo -e "${BLUE}Installing system dependencies...${NC}"
-    sudo apt update && sudo apt install -y fzf mpv curl nodejs
-    
-    echo -e "${BLUE}Installing latest standalone yt-dlp binary...${NC}"
-    sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-    sudo chmod a+rx /usr/local/bin/yt-dlp
-    
-elif [ "$DISTRO" == "Mac" ] && command -v brew &> /dev/null; then
-    echo -e "${BLUE}Installing for macOS via Homebrew...${NC}"
-    brew install yt-dlp fzf mpv curl node
-else
-    echo -e "${RED}Error: Cannot auto-install dependencies.${NC}"
-    exit 1
+elif [[ "${OS}" == "Darwin"* ]]; then
+    echo -e "${BLUE}macOS Detected.${NC}"
+    if [ "$USER" == "root" ]; then
+        echo -e "${RED}Error: Please do NOT run this installer with 'sudo bash' on macOS.${NC}"
+        echo -e "Homebrew forbids running as root. Run simply as: ${GREEN}curl ... | bash${NC}"
+        exit 1
+    fi
+    if command -v brew &> /dev/null; then
+        echo -e "${BLUE}Installing for macOS via Homebrew...${NC}"
+        brew install yt-dlp fzf mpv curl node
+    else
+        echo -e "${RED}Homebrew not found. Please install Homebrew first: https://brew.sh/${NC}"
+        exit 1
+    fi
 fi
 
 # 3. Installation
-# Detect the real user and home directory (even under sudo)
-ACTUAL_USER="${SUDO_USER:-$USER}"
-ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
-INSTALL_DIR="$ACTUAL_HOME/.local/bin"
-
-if [ "$USER" == "root" ] && [ -n "$SUDO_USER" ]; then
-    echo -e "${BLUE}Running as root via sudo. Installing for user: ${ACTUAL_USER}${NC}"
-fi
-
+# We install to the user's home to avoid permission/security issues on macOS
+INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
@@ -68,42 +62,26 @@ curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL
 curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
 
 chmod +x "$INSTALL_DIR/yterm"
-# Ensure the user owns the binary if we created it as root
-if [ "$USER" == "root" ] && [ -n "$SUDO_USER" ]; then
-    chown "$ACTUAL_USER" "$INSTALL_DIR/yterm"
-fi
 
 # 4. PATH Setup
 SHELL_CONFIG=""
-# Detect shell based on the actual user's preference or environment
-USER_SHELL=$(getent passwd "$ACTUAL_USER" | cut -d: -f6 | xargs -I {} basename {} 2>/dev/null || echo $SHELL)
-
-if [[ "$USER_SHELL" == *"zsh"* ]]; then 
-    SHELL_CONFIG="$ACTUAL_HOME/.zshrc"
-elif [[ "$USER_SHELL" == *"bash"* ]]; then 
-    SHELL_CONFIG="$ACTUAL_HOME/.bashrc"
-else
-    # Fallback to checking for existence
-    if [ -f "$ACTUAL_HOME/.zshrc" ]; then SHELL_CONFIG="$ACTUAL_HOME/.zshrc"
-    elif [ -f "$ACTUAL_HOME/.bashrc" ]; then SHELL_CONFIG="$ACTUAL_HOME/.bashrc"
-    fi
+if [[ "$SHELL" == *"zsh"* ]]; then 
+    SHELL_CONFIG="$HOME/.zshrc"
+elif [[ "$SHELL" == *"bash"* ]]; then 
+    SHELL_CONFIG="$HOME/.bashrc"
 fi
 
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    if [ -n "$SHELL_CONFIG" ]; then
+    if [ -n "$SHELL_CONFIG" ] && [ -f "$SHELL_CONFIG" ]; then
         echo -e "${BLUE}Updating PATH in ${SHELL_CONFIG}...${NC}"
-        
-        # Check if writable, use sudo tee if not
-        if [ ! -w "$SHELL_CONFIG" ] && [ -f "$SHELL_CONFIG" ]; then
-            echo -e "\n# Added by yterm\nexport PATH=\"\$HOME/.local/bin:\$PATH\"" | sudo tee -a "$SHELL_CONFIG" > /dev/null
-        else
-            echo -e "\n# Added by yterm" >> "$SHELL_CONFIG"
-            echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$SHELL_CONFIG"
+        # No sudo here to avoid changing file ownership to root (causes zsh security warnings)
+        if [[ ! $(grep -q "Added by yterm" "$SHELL_CONFIG" 2>/dev/null) ]]; then
+            echo -e "\n# Added by yterm\nexport PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$SHELL_CONFIG"
+            echo -e "${GREEN}Added to PATH via ${SHELL_CONFIG}. Restart your terminal or run 'source ${SHELL_CONFIG}'${NC}"
         fi
-        
-        echo -e "${GREEN}Added to PATH via ${SHELL_CONFIG}. Restart your terminal or run 'source ${SHELL_CONFIG}'${NC}"
     else
-        echo -e "${RED}Warning: Could not detect shell config file (e.g., .zshrc). Please add ${INSTALL_DIR} to your PATH manually.${NC}"
+        echo -e "${RED}Warning: Could not auto-detect shell config. Please add ${INSTALL_DIR} to your PATH manually.${NC}"
+        echo -e "Add this line to your .zshrc or .bashrc: ${BLUE}export PATH=\"\$HOME/.local/bin:\$PATH\"${NC}"
     fi
 fi
 

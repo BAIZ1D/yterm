@@ -22,18 +22,18 @@ These commands will handle everything: uninstalling outdated system tools, insta
 
 **Linux (Debian / Ubuntu / Kali / Mint)**
 ```bash
-sudo apt update && sudo apt install -y curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | sudo bash
+sudo apt update && sudo apt install -y curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 **macOS**
 ```bash
-brew install yt-dlp fzf mpv curl node && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | sudo bash
+brew install yt-dlp fzf mpv curl node && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 **Windows (PowerShell)**
 *This installs WSL first if you don't have it. If you do, it enters WSL and sets up yterm.*
 ```powershell
-if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | sudo bash" }
+if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
 ```
 
 ---
