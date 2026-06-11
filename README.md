@@ -22,18 +22,18 @@ These commands will handle everything: uninstalling outdated system tools, insta
 
 **Linux (Debian / Ubuntu / Kali / Mint)**
 ```bash
-sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs && /usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 **macOS**
 ```bash
-brew install yt-dlp fzf mpv ffmpeg curl node && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+brew install yt-dlp fzf mpv ffmpeg curl node && /usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 **Windows (PowerShell)**
 *This installs WSL first if you don't have it. If you do, it enters WSL and sets up yterm.*
 ```powershell
-if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
+if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs && /usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
 ```
 
 ---
@@ -74,7 +74,7 @@ This command is nuclear. It updates your system packages (`apt`), swaps your eng
 **SSL / Certificate errors**
 If your terminal complains about certificates, add `-k` to the curl command:
 ```bash
-curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+/usr/bin/env curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 ---
@@ -99,7 +99,7 @@ terminal video player, fzf youtube, linux youtube tool, macos youtube cli, wsl y
 If you need to install a specific version of yterm, you can use the `YTERM_VERSION` environment variable:
 
 ```bash
-YTERM_VERSION=v2.4.2 bash -c "$(curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh)"
+YTERM_VERSION=v2.4.2 bash -c "$(/usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh)"
 ```
 
 ---
@@ -108,5 +108,5 @@ YTERM_VERSION=v2.4.2 bash -c "$(curl -sSL https://raw.githubusercontent.com/BAIZ
 If you ever want to remove `yterm` and clean up your `PATH`, simply run the uninstaller script:
 
 ```bash
-bash -c "$(curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/uninstall_yterm.sh)"
+bash -c "$(/usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/uninstall_yterm.sh)"
 ```
