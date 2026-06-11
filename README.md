@@ -29,7 +29,7 @@ Ensure you have the following installed on your system:
 ### 2. One-Command Install
 Run the following command in your terminal:
 ```bash
-curl -sSL https://raw.githubusercontent.com/[YOUR_USERNAME]/yterm/main/install_yterm.sh | bash
+curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 ---

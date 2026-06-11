@@ -51,8 +51,8 @@ fi
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
-echo -e "Installing yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
-cp yterm "$INSTALL_DIR/yterm"
+echo -e "Downloading and installing yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
+curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
 chmod +x "$INSTALL_DIR/yterm"
 
 # 4. Path Check
