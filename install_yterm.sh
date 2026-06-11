@@ -95,7 +95,7 @@ elif [[ "${OS}" == "Darwin"* ]]; then
     fi
     if [ -x "/opt/homebrew/bin/brew" ]; then eval "$(/opt/homebrew/bin/brew shellenv)"; fi; if [ -x "/usr/local/bin/brew" ]; then eval "$(/usr/local/bin/brew shellenv)"; fi; if command -v brew &> /dev/null; then
         echo -e "${BLUE}Installing for macOS via Homebrew...${NC}"
-        brew install yt-dlp fzf mpv ffmpeg curl node # v2.5.0-fixed
+        brew install yt-dlp fzf mpv ffmpeg curl node
         
         # macOS MPV FIX: Ensure mpv uses yt-dlp explicitly
         echo -e "${BLUE}Configuring mpv for macOS...${NC}"
