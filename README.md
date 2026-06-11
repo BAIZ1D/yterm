@@ -73,3 +73,9 @@ If you end up using this while you're bored too, throw a star on the repo. It's 
 ---
 
 License: Open Source. Do whatever you want with it.
+
+<!-- 
+Keywords for search engines:
+youtube terminal client, cli youtube player, bash youtube search, yterm, baizid al hamid, 
+terminal video player, fzf youtube, linux youtube tool, macos youtube cli, wsl youtube player
+-->
