@@ -83,7 +83,7 @@ if [[ "${OS}" == "Linux"* ]]; then
         
         echo -e "${BLUE}Installing latest standalone yt-dlp binary...${NC}"
         ensure_writable_dir "/usr/local/bin"
-        sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+        sudo command curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
         sudo chmod a+rx /usr/local/bin/yt-dlp
     fi
 elif [[ "${OS}" == "Darwin"* ]]; then
@@ -120,8 +120,8 @@ INSTALL_DIR="$ACTUAL_HOME/.local/bin"
 ensure_writable_dir "$INSTALL_DIR"
 
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
-curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm" || \
-curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm"
+command curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm" || \
+command curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm"
 
 chmod +x "$INSTALL_DIR/yterm"
 
