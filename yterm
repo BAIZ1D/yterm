@@ -1,26 +1,25 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.2.5
+# Version: 2.3.0
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.2.5"
+VERSION="2.3.0"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# Enhanced Stability flags for 2026/WSL 
+COMMON_FLAGS="-4 --no-check-certificate --socket-timeout 10 --geo-bypass"
 
 # --- Signal Handling ---
 trap "echo -e '\nExiting yterm...'; exit 0" SIGINT SIGTERM
 
-# --- Platform Detection ---
+# --- WSL Detection ---
 IS_WSL=0
 if grep -qE "(Microsoft|microsoft|WSL)" /proc/version 2>/dev/null; then
     IS_WSL=1
 fi
-
-# Stability flags for 2026/WSL 
-# We force IPv4 (-4) and a shorter timeout to trigger retries faster if it hangs.
-COMMON_FLAGS="-4 --no-check-certificate --socket-timeout 10 --geo-bypass"
 
 show_help() {
     cat << EOF
@@ -32,7 +31,7 @@ USAGE:
 OPTIONS:
     -h, --help      Show this help message
     -v, --version   Show version information
-    -u, --update    Update the app, yt-dlp (Nightly), and system packages
+    -u, --update    Full update (Engine, OS packages, and yterm script)
 
 CONTROLS:
     1. SEARCH MENU:
@@ -53,9 +52,23 @@ case "$1" in
     -v|--version) echo "yterm v$VERSION"; exit 0 ;;
     -u|--update)
         echo "Updating system packages..."
-        sudo apt update && sudo apt install -y yt-dlp fzf mpv curl nodejs || true
-        echo "Forcing yt-dlp to latest Nightly build (Required for 2026 fix)..."
-        sudo yt-dlp --update-to nightly || sudo yt-dlp -U
+        if command -v apt &> /dev/null; then
+            sudo apt update && sudo apt install -y fzf mpv curl nodejs
+            if dpkg -l | grep -q yt-dlp; then
+                echo "Removing outdated apt version of yt-dlp..."
+                sudo apt remove -y yt-dlp
+            fi
+        fi
+        echo "Updating yt-dlp to latest (Nightly)..."
+        if [ -f /usr/local/bin/yt-dlp ]; then
+            sudo /usr/local/bin/yt-dlp --update-to nightly || sudo /usr/local/bin/yt-dlp -U
+        elif command -v yt-dlp &> /dev/null; then
+            sudo yt-dlp --update-to nightly || sudo yt-dlp -U
+        else
+            echo "Installing latest standalone yt-dlp binary..."
+            sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+            sudo chmod a+rx /usr/local/bin/yt-dlp
+        fi
         echo "Downloading latest yterm script..."
         INSTALL_DIR="$HOME/.local/bin"
         curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
@@ -112,28 +125,25 @@ echo "$selected_list" | while read -r selected; do
     echo "[$current/$total] Playing: $title"
     echo "------------------------------------------------"
 
-    echo "Fetching stream (this can take 5-10s in WSL)..."
+    echo "Fetching stream..."
     
     # TRY 1: Modern Web Extraction
     # shellcheck disable=SC2086
     stream_url=$(yt-dlp $COMMON_FLAGS -g --user-agent "$UA" --extractor-args "youtube:player-client=web,mweb" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
 
-    # TRY 2: Mobile Client Bypass (Less bot detection)
+    # TRY 2: Mobile Client Bypass
     if [ -z "$stream_url" ]; then
-        echo "Retrying with Mobile-Client bypass..."
         # shellcheck disable=SC2086
         stream_url=$(yt-dlp $COMMON_FLAGS -g --extractor-args "youtube:player-client=ios,android" -f "best" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
     fi
 
-    # TRY 3: The "Nuclear" Option (Force HLS/M3U8) - Most reliable for WSL hangs
+    # TRY 3: HLS Fallback
     if [ -z "$stream_url" ]; then
-        echo "Still hanging? Forcing HLS Protocol (Protocol Bypass)..."
         # shellcheck disable=SC2086
         stream_url=$(yt-dlp $COMMON_FLAGS -g --extractor-args "youtube:player-client=web" -f "best[protocol^=m3u8]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
     fi
 
     if [ -n "$stream_url" ]; then
-        # Check for Terminology
         if command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
             echo "Launching Terminology popup..."
             set +e; typop "$stream_url"; PLAY_STATUS=$?; set -e
@@ -148,7 +158,6 @@ echo "$selected_list" | while read -r selected; do
                  echo "No display detected. Playing Audio-Only."
                  MPV_FLAGS="$MPV_FLAGS --no-video"
              fi
-             # Force MPV to be more patient with stream loading
              MPV_FLAGS="$MPV_FLAGS --cache=yes --demuxer-max-bytes=100M"
              
              set +e
@@ -156,8 +165,7 @@ echo "$selected_list" | while read -r selected; do
              set -e
         fi
     else
-        echo "Critical Error: Could not extract stream URL for this video."
-        echo "Reason: YouTube's 2026 'PoToken' security is blocking WSL."
-        echo "Fix: Sign in to YouTube in your Windows browser and try again, or run 'yterm --update'."
+        echo "Critical Error: Could not extract stream URL."
+        echo "Try running: yterm --update"
     fi
 done
