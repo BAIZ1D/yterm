@@ -19,29 +19,39 @@ if grep -qE "(Microsoft|microsoft|WSL)" /proc/version 2>/dev/null; then
     IS_WSL=1
 fi
 
-# 2. Permission Rescue Function
-# This fixes directories that might be owned by root from previous failed sudo runs
+# 2. Permission Rescue Function (Aggressive)
 ensure_writable() {
     local target="$1"
     if [ -z "$target" ]; then return; fi
 
-    # If the parent directory exists but is not writable, we need to fix it first
-    local parent
-    parent=$(dirname "$target")
-    if [ -d "$parent" ] && [ ! -w "$parent" ]; then
-        echo -e "${BLUE}Fixing permissions for parent directory: ${parent}${NC}"
-        sudo chown "$USER" "$parent" 2>/dev/null || true
+    # Nuclear Check: If a parent is a file instead of a directory
+    if [ -f "$target" ]; then
+        echo -e "${RED}Error: ${target} exists but is a file. Removing to create directory...${NC}"
+        sudo rm -f "$target"
     fi
 
-    # Now handle the target itself
+    # Fix existing but un-writable targets
     if [ -e "$target" ]; then
         if [ ! -w "$target" ]; then
             echo -e "${BLUE}Fixing permissions for ${target}...${NC}"
-            sudo chown -R "$USER" "$target" 2>/dev/null || true
+            sudo chown -R "$USER" "$target"
+            sudo chmod -R u+w "$target"
         fi
     else
-        # Try to create it, fallback to sudo if fails
-        mkdir -p "$target" 2>/dev/null || (echo -e "${BLUE}Creating ${target} with sudo...${NC}" && sudo mkdir -p "$target" && sudo chown -R "$USER" "$target")
+        # Target doesn't exist. Check parent.
+        local parent
+        parent=$(dirname "$target")
+        
+        # Recursive fix for parents
+        if [ "$parent" != "$HOME" ] && [ "$parent" != "/" ] && [ "$parent" != "." ]; then
+            ensure_writable "$parent"
+        fi
+        
+        # Now try creating
+        if [ ! -d "$target" ]; then
+            echo -e "${BLUE}Creating directory: ${target}${NC}"
+            mkdir -p "$target" 2>/dev/null || (sudo mkdir -p "$target" && sudo chown "$USER" "$target")
+        fi
     fi
 }
 
@@ -76,7 +86,6 @@ elif [[ "${OS}" == "Darwin"* ]]; then
         
         # macOS MPV FIX: Ensure mpv uses yt-dlp explicitly
         echo -e "${BLUE}Configuring mpv for macOS...${NC}"
-        ensure_writable "$HOME/.config"
         ensure_writable "$HOME/.config/mpv"
         
         CONFIG_FILE="$HOME/.config/mpv/mpv.conf"
@@ -92,7 +101,6 @@ fi
 
 # 4. Installation
 INSTALL_DIR="$HOME/.local/bin"
-ensure_writable "$HOME/.local"
 ensure_writable "$INSTALL_DIR"
 
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
