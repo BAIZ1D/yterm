@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.3.9
+# Version: 2.4.0
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.3.9"
+VERSION="2.4.0"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # Enhanced Stability flags for 2026/WSL 
@@ -189,13 +189,15 @@ echo "$selected_list" | while read -r selected; do
              # Use a unique socket to avoid conflicts
              MPV_ARGS+=(--input-ipc-server="/tmp/mpv-socket-$(id -u)")
              
-             # PROFESSIONAL LOOK for macOS
-             # 1. Force software decoding (stops red errors at the source)
+             # MINIMALIST UI for macOS
+             # 1. Force software decoding
              MPV_ARGS+=(--hwdec=no)
-             # 2. Silence all logs except core player status
+             # 2. Total silencing
+             MPV_ARGS+=(--really-quiet)
              MPV_ARGS+=(--msg-level=all=no)
-             MPV_ARGS+=(--msg-level=cplayer=status)
-             # 3. Clean OSD
+             # 3. Disable all status lines (no AO, VO, or AV filling up terminal)
+             MPV_ARGS+=(--no-terminal)
+             # 4. Clean OSD
              MPV_ARGS+=(--no-video-osd)
          fi
 
@@ -211,9 +213,8 @@ echo "$selected_list" | while read -r selected; do
          
          set +e
          if [ $IS_MAC -eq 1 ]; then
-             # Redirect stderr to hide any library-level warnings that msg-level misses
-             # This preserves stdout for smooth in-place status line updates
-             mpv "${MPV_ARGS[@]}" "$url" 2>/dev/null
+             # On Mac, we redirect everything to hide any system warnings
+             mpv "${MPV_ARGS[@]}" "$url" &>/dev/null
          else
              mpv "${MPV_ARGS[@]}" "$url"
          fi
