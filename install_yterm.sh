@@ -30,10 +30,12 @@ check_dep() {
     command -v "$1" &> /dev/null
 }
 
-DEPS=("yt-dlp" "fzf" "mpv" "curl")
+DEPS=("yt-dlp" "fzf" "mpv" "curl" "node")
 MISSING=()
 for dep in "${DEPS[@]}"; do
-    if ! check_dep "$dep"; then MISSING+=("$dep"); fi
+    if ! check_dep "$dep"; then 
+        if [ "$dep" == "node" ]; then MISSING+=("nodejs"); else MISSING+=("$dep"); fi
+    fi
 done
 
 if [ ${#MISSING[@]} -gt 0 ]; then
@@ -44,7 +46,12 @@ if [ ${#MISSING[@]} -gt 0 ]; then
         sudo apt update && sudo apt install -y "${MISSING[@]}"
     elif [ "$DISTRO" == "Mac" ] && command -v brew &> /dev/null; then
         echo -e "${BLUE}Installing for macOS via Homebrew...${NC}"
-        brew install "${MISSING[@]}"
+        # Node on Mac is just 'node'
+        CLEAN_MISSING=()
+        for m in "${MISSING[@]}"; do
+            if [ "$m" == "nodejs" ]; then CLEAN_MISSING+=("node"); else CLEAN_MISSING+=("$m"); fi
+        done
+        brew install "${CLEAN_MISSING[@]}"
     else
         echo -e "${RED}Error: Cannot auto-install dependencies.${NC}"
         echo "Please install: ${MISSING[*]} manually and run this script again."
@@ -79,17 +86,15 @@ fi
 echo -e "${GREEN}✅ yterm is ready!${NC}"
 echo -e "\n${BLUE}--- QUICK START GUIDE ---${NC}"
 
-# Define the base command based on environment
-RUN_CMD="yterm"
 if [ "$IS_WSL" -eq 1 ]; then
-    RUN_CMD="wsl yterm"
-    echo -e "${BLUE}Note: To run this from regular PowerShell/CMD, use: ${GREEN}wsl yterm${NC}"
+    echo -e "Windows Users: First type ${GREEN}wsl${NC} and press Enter to enter your Linux environment."
+    echo -e "Then use the commands below."
 fi
 
-echo -e "1. ${GREEN}Search${NC}  : $RUN_CMD \"search query\""
+echo -e "1. ${GREEN}Search${NC}  : yterm \"search query\""
 echo -e "2. ${GREEN}Playlist${NC}: Use ${BLUE}TAB${NC} to select multiple videos in the menu."
 echo -e "3. ${GREEN}Play${NC}     : Hit ${BLUE}ENTER${NC}."
 echo -e "4. ${GREEN}Skip${NC}     : Press ${BLUE}q${NC} on your keyboard to skip to the next video."
 echo -e "5. ${GREEN}Exit${NC}     : Press ${BLUE}CTRL-C${NC} in the terminal to kill the session."
 echo -e "-------------------------"
-echo -e "If search ever stops working, just run: ${BLUE}$RUN_CMD --update${NC}"
+echo -e "If search ever stops working, just run: ${BLUE}yterm --update${NC}"

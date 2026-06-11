@@ -18,21 +18,22 @@ Made by **BAIZID AL HAMID**.
 
 ### Installation (The "I'm lazy" version)
 
-These commands will try to grab all the dependencies and set up the script in one go. If things fail, check the "If things go south" section below.
+These commands will grab all dependencies (including **Node.js** for bypass) and set up the script in one go. 
 
 **Linux (Debian / Ubuntu / Kali / Mint)**
 ```bash
-sudo apt update && sudo apt install -y yt-dlp fzf mpv curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+sudo apt update && sudo apt install -y yt-dlp fzf mpv curl nodejs && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 **macOS**
 ```bash
-brew install yt-dlp fzf mpv curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+brew install yt-dlp fzf mpv curl node && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 **Windows (PowerShell)**
+*This installs WSL first if you don't have it. If you do, it enters WSL and sets up yterm.*
 ```powershell
-if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y yt-dlp fzf mpv curl && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
+if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y yt-dlp fzf mpv curl nodejs && curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
 ```
 
 ---
@@ -40,43 +41,34 @@ if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL
 ### How to use it (The Quick Guide)
 
 **1. Searching**
-Just run the command followed by your search query. 
-*(Windows users: If you're in PowerShell/CMD, use `wsl yterm`. Linux/Mac/WSL users: just `yterm`)*
-
-```bash
-# Linux / Mac / WSL Terminal
-yterm "lofi hip hop"
-
-# Windows PowerShell / CMD
-wsl yterm "lofi hip hop"
-```
-Once the list pops up, just start typing to filter the results. It's instant.
+- **Linux/Mac**: Just run `yterm "query"`.
+- **Windows (PowerShell)**: 
+  1. Type `wsl` and press Enter to enter your Linux shell.
+  2. Run `yterm "query"`.
 
 **2. Building a Playlist (Queueing)**
-Don't just play one video. Use **TAB** to select multiple videos from the list. Each one you hit TAB on will be added to your temporary playlist. Hit **ENTER** when you're ready to start the show.
+Don't just play one video. Use **TAB** to select multiple videos from the list. Hit **ENTER** when you're ready to start the show.
 
 **3. Controls & Skipping**
-- **To Skip**: If you're using MPV (standard), just hit **q** on your keyboard. It will kill the current video and immediately start the next one in your queue. If you're in Terminology, just close the popup window.
-- **To Stop Everything**: If you want to bail on the whole playlist, hit **CTRL-C** in your terminal window. It will kill the entire session.
+- **To Skip**: Press **q** on your keyboard to skip to the next video.
+- **To Stop Everything**: Press **CTRL-C** in your terminal window.
 
 ---
 
 ### If things go south (Troubleshooting)
 
-**SSL / Certificate errors**
-If your terminal starts complaining about "SSL certificate problem" or "expired certificates," it's probably because your system clock is wrong or your certs are ancient. You can force it through by adding `-k` to the curl command:
-```bash
-curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
-```
-
-**Search stops working**
-YouTube loves to break things on purpose. If the search stops giving you results, it's usually because the extraction engine needs an update. Fix it with:
+**Search stops working / Fetches hang**
+YouTube 2026 uses a "PoToken" to block bots. `yterm` handles this by using **Node.js** and the latest **yt-dlp nightly**. If things hang, run:
 ```bash
 yterm --update
 ```
+This command now updates your system packages (`apt`), the `yt-dlp` engine, and the `yterm` script itself.
 
-**Black screen or no sound**
-Make sure `mpv` is actually working on your system. If you're on a server without a screen, obviously this won't show you video.
+**SSL / Certificate errors**
+If your terminal complains about certificates, add `-k` to the curl command:
+```bash
+curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+```
 
 ---
 

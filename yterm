@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.2.3
+# Version: 2.2.4
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.2.3"
+VERSION="2.2.4"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # Enhanced Stability flags for 2026/WSL 
-# -4: Force IPv4 (Crucial for WSL network stability)
-# --socket-timeout: Stop hanging if YouTube is slow
-# --extractor-args: Use mobile clients which have fewer bot checks
 STABILITY_FLAGS="-4 --no-check-certificate --socket-timeout 30 --extractor-args youtube:player_client=ios,android,web"
 
 # --- Signal Handling ---
@@ -30,6 +27,11 @@ yterm v$VERSION - Search and play YouTube videos directly from your terminal.
 
 USAGE:
     yterm [OPTIONS] "search terms"
+
+OPTIONS:
+    -h, --help      Show this help message
+    -v, --version   Show version information
+    -u, --update    Update the app, yt-dlp, and system dependencies
 
 CONTROLS:
     1. SEARCH MENU:
@@ -49,6 +51,8 @@ case "$1" in
     -h|--help) show_help; exit 0 ;;
     -v|--version) echo "yterm v$VERSION"; exit 0 ;;
     -u|--update)
+        echo "Updating system dependencies (Apt)..."
+        sudo apt update && sudo apt install -y yt-dlp fzf mpv curl nodejs
         echo "Updating yt-dlp to latest (Nightly)..."
         sudo yt-dlp --update-to nightly || sudo yt-dlp -U
         echo "Downloading latest yterm script..."
@@ -76,7 +80,8 @@ check_tool "mpv"
 # Ensure a JS runtime is available for YouTube's PoToken
 if ! command -v node &> /dev/null && ! command -v deno &> /dev/null; then
     echo "⚠️  WARNING: No JavaScript runtime (Node.js or Deno) detected."
-    echo "YouTube might block stream extraction. Install Node.js or Deno in WSL."
+    echo "YouTube might block stream extraction. Attempting to install Node.js..."
+    sudo apt update && sudo apt install -y nodejs || echo "Manual install of nodejs recommended."
 fi
 
 echo "Searching YouTube for: $*..."
