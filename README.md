@@ -19,17 +19,26 @@ The Terminal YouTube Experience. A high-performance, fuzzy-search YouTube client
 
 ## 🛠️ Installation
 
-### 1. Requirements
-Ensure you have the following installed on your system:
-- `yt-dlp` (The engine)
-- `fzf` (The search interface)
-- `mpv` (The player)
-- `curl` (For installation)
+### 1. Requirements & Platform Setup
+
+| Platform | Recommended Environment | Required Dependencies |
+| :--- | :--- | :--- |
+| **Linux** | Standard Terminal | `sudo apt install yt-dlp fzf mpv curl` |
+| **macOS** | Zsh / Terminal | `brew install yt-dlp fzf mpv curl` |
+| **Windows** | **WSL** or **Git Bash** | Install via `apt` (WSL) or manual `.exe` |
+
+*Note: Windows CMD and PowerShell are **not** supported natively. Please use WSL (Ubuntu) for the best experience.*
 
 ### 2. One-Command Install
-Run the following command in your terminal:
+Run the following command in your terminal (Linux/Mac/WSL):
 ```bash
 curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+```
+
+**Troubleshooting SSL Errors:**
+If you get an error like `SSL certificate problem` or `unable to get local issuer certificate`, your system's security certificates are outdated. You can bypass this by adding `-k` to the command:
+```bash
+curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
 ```
 
 ---
