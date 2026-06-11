@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.2.2
+# Version: 2.2.3
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.2.2"
+VERSION="2.2.3"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-# Stability flags for WSL/Cross-platform reliability
-# --force-ipv4: Fixes hangs on WSL network stacks
-# --no-check-certificate: Fixes SSL issues on older systems
-# --socket-timeout: Prevents infinite hanging
-STABILITY_FLAGS="--force-ipv4 --no-check-certificate --socket-timeout 15"
+# Enhanced Stability flags for 2026/WSL 
+# -4: Force IPv4 (Crucial for WSL network stability)
+# --socket-timeout: Stop hanging if YouTube is slow
+# --extractor-args: Use mobile clients which have fewer bot checks
+STABILITY_FLAGS="-4 --no-check-certificate --socket-timeout 30 --extractor-args youtube:player_client=ios,android,web"
 
 # --- Signal Handling ---
 trap "echo -e '\nExiting yterm...'; exit 0" SIGINT SIGTERM
@@ -41,10 +41,6 @@ CONTROLS:
        - q           : Skip to the next video (MPV).
        - CTRL-C      : Kill everything and exit.
 
-NOTE FOR WINDOWS (WSL):
-    If video playback hangs, yterm will try to fallback to audio-only.
-    Ensure you are on a modern Windows build (Win 11) for full video support.
-
 EOF
 }
 
@@ -53,8 +49,8 @@ case "$1" in
     -h|--help) show_help; exit 0 ;;
     -v|--version) echo "yterm v$VERSION"; exit 0 ;;
     -u|--update)
-        echo "Updating yt-dlp engine..."
-        sudo yt-dlp -U
+        echo "Updating yt-dlp to latest (Nightly)..."
+        sudo yt-dlp --update-to nightly || sudo yt-dlp -U
         echo "Downloading latest yterm script..."
         INSTALL_DIR="$HOME/.local/bin"
         curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/yterm -o "$INSTALL_DIR/yterm"
@@ -77,22 +73,30 @@ check_tool "yt-dlp"
 check_tool "fzf"
 check_tool "mpv"
 
-export YTDLP_JS_RUNTIMES="node"
+# Ensure a JS runtime is available for YouTube's PoToken
+if ! command -v node &> /dev/null && ! command -v deno &> /dev/null; then
+    echo "⚠️  WARNING: No JavaScript runtime (Node.js or Deno) detected."
+    echo "YouTube might block stream extraction. Install Node.js or Deno in WSL."
+fi
 
 echo "Searching YouTube for: $*..."
 # shellcheck disable=SC2086
 results=$(yt-dlp $STABILITY_FLAGS "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null)
 
 if [ -z "$results" ]; then
-    echo "No results found. Try running 'yterm --update' or check your connection."
+    echo "No results found. Trying one more time with different settings..."
+    # shellcheck disable=SC2086
+    results=$(yt-dlp -4 "ytsearch10:$*" --flat-playlist --print "%(title)s [%(id)s]" 2>/dev/null)
+fi
+
+if [ -z "$results" ]; then
+    echo "Still no results. YouTube might be blocking your IP. Try 'yterm --update'."
     exit 1
 fi
 
 selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s) [TAB to multi-select]: " --header="yterm - Playlist Builder (TAB to select, ENTER to play)" --height=80% --border)
 
-if [ -z "$selected_list" ]; then
-    exit 0
-fi
+if [ -z "$selected_list" ]; then exit 0; fi
 
 total=$(echo "$selected_list" | wc -l)
 current=0
@@ -107,8 +111,9 @@ echo "$selected_list" | while read -r selected; do
     echo "------------------------------------------------"
 
     echo "Fetching stream..."
+    # Force mobile client for extraction phase
     # shellcheck disable=SC2086
-    stream_url=$(yt-dlp $STABILITY_FLAGS -g --user-agent "$UA" --extractor-args "youtube:player-client=android,web" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
+    stream_url=$(yt-dlp $STABILITY_FLAGS -g --user-agent "$UA" -f "best[ext=mp4][protocol^=http]" "https://www.youtube.com/watch?v=$video_id" 2>/dev/null || echo "")
 
     if [ -z "$stream_url" ]; then
         # shellcheck disable=SC2086
@@ -116,7 +121,6 @@ echo "$selected_list" | while read -r selected; do
     fi
 
     if [ -n "$stream_url" ]; then
-        # Check if typop exists and we are in terminology
         if command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
             echo "Launching Terminology popup..."
             set +e; typop "$stream_url"; PLAY_STATUS=$?; set -e
@@ -126,19 +130,16 @@ echo "$selected_list" | while read -r selected; do
         
         if [ $PLAY_STATUS -ne 0 ]; then
              echo "Launching MPV..."
-             # WSL COMPATIBILITY HACK: 
-             # If no display is found, use --no-video to prevent hanging.
              MPV_FLAGS="--user-agent=$UA --title=\"yterm: $title\""
              if [ $IS_WSL -eq 1 ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
-                 echo "No display detected in WSL. Playing Audio-Only to prevent hanging."
+                 echo "No display detected. Playing Audio-Only."
                  MPV_FLAGS="$MPV_FLAGS --no-video"
              fi
-             
              set +e
              mpv $MPV_FLAGS "$stream_url"
              set -e
         fi
     else
-        echo "Error: Could not extract stream URL. YouTube might be throttling your connection."
+        echo "Error: Could not extract stream URL. Try 'yterm --update'."
     fi
 done
