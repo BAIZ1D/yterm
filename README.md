@@ -40,9 +40,15 @@ if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL
 ### How to use it (The Quick Guide)
 
 **1. Searching**
-Just run `yterm` followed by your search query:
+Just run the command followed by your search query. 
+*(Windows users: If you're in PowerShell/CMD, use `wsl yterm`. Linux/Mac/WSL users: just `yterm`)*
+
 ```bash
+# Linux / Mac / WSL Terminal
 yterm "lofi hip hop"
+
+# Windows PowerShell / CMD
+wsl yterm "lofi hip hop"
 ```
 Once the list pops up, just start typing to filter the results. It's instant.
 
