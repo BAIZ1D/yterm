@@ -12,6 +12,13 @@ NC='\033[0m'
 
 echo -e "${BLUE}📺 yterm: The \"Boredom\" Installation Script${NC}"
 
+get_real_curl() {
+    if [ -f "/usr/bin/curl" ]; then echo "/usr/bin/curl"; return; fi
+    if [ -f "/bin/curl" ]; then echo "/bin/curl"; return; fi
+    echo "curl"
+}
+CURL_CMD=$(get_real_curl)
+
 # 1. Platform Detection
 OS="$(uname -s)"
 IS_WSL=0
@@ -83,7 +90,7 @@ if [[ "${OS}" == "Linux"* ]]; then
         
         echo -e "${BLUE}Installing latest standalone yt-dlp binary...${NC}"
         ensure_writable_dir "/usr/local/bin"
-        sudo command curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+        sudo $CURL_CMD -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
         sudo chmod a+rx /usr/local/bin/yt-dlp
     fi
 elif [[ "${OS}" == "Darwin"* ]]; then
@@ -118,13 +125,6 @@ ACTUAL_USER="${SUDO_USER:-$USER}"
 ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
 INSTALL_DIR="$ACTUAL_HOME/.local/bin"
 ensure_writable_dir "$INSTALL_DIR"
-
-get_real_curl() {
-    if [ -f "/usr/bin/curl" ]; then echo "/usr/bin/curl"; return; fi
-    if [ -f "/bin/curl" ]; then echo "/bin/curl"; return; fi
-    echo "curl"
-}
-CURL_CMD=$(get_real_curl)
 
 echo -e "Downloading yterm to ${GREEN}${INSTALL_DIR}/yterm${NC}"
 $CURL_CMD -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/${YTERM_VERSION:-main}/yterm -o "$INSTALL_DIR/yterm" || \
