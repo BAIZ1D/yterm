@@ -90,6 +90,18 @@ If playback or searches fail, synchronize your tools:
 yterm --update
 ```
 
+### Windows Audio and Performance (WSL)
+If utilizing WSL, you may encounter audio desynchronization or UI latency.
+- Ensure you are operating on **WSL 2**.
+- Validate your Windows host is fully updated to ensure PulseAudio compatibility.
+- Execute `yterm --update` to guarantee the latest media libraries are present in your subsystem.
+
+### Certificate Errors
+In environments with strict proxy filtering or outdated certificates, bypass SSL verification warnings by appending the insecure flag:
+```bash
+/usr/bin/env curl -ksSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+```
+
 ---
 
 ## Version Management
