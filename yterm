@@ -83,8 +83,8 @@ draw_progress_bar() {
     local total_time=$2
     local bar_width=40
     
-    # Ensure total_time is not zero
-    if [ "$total_time" -eq 0 ]; then
+    # Safety check for total_time to prevent division by zero
+    if [ -z "$total_time" ] || [ "$total_time" -eq 0 ] || [ "$total_time" == "null" ]; then
         percentage=0
     else
         percentage=$((current_time * 100 / total_time))
@@ -322,6 +322,15 @@ for selected in "${selected_array[@]}"; do
                 ;;
             'k')
                 kill $MPV_PID
+                echo -e "\n\nPlaylist cancelled. Exiting."
+                exit 0
+                ;;
+        esac
+    done
+done
+
+echo -e "\n\nPlaylist finished. Run yterm again to search for more."
+       kill $MPV_PID
                 echo -e "\n\nPlaylist cancelled. Exiting."
                 exit 0
                 ;;
