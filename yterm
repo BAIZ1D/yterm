@@ -66,6 +66,84 @@ EOF
 }
 
 # --- Handle Flags ---
+# --- UI & MPV Helper Functions ---
+send_mpv_command() {
+    printf '{"command": %s}\n' "$1" | socat - "/tmp/mpv-socket-$(id -u)" >/dev/null
+}
+
+get_mpv_property() {
+    local request
+    request=$(printf '{"command": ["get_property", "%s"]}\n' "$1")
+    response=$(echo "$request" | socat - "/tmp/mpv-socket-$(id -u)")
+    echo "$response" | sed -n 's/.*"data":\([^,}]*\).*/\1/p' | sed 's/"//g'
+}
+
+draw_progress_bar() {
+    local current_time=$1
+    local total_time=$2
+    local bar_width=40
+    
+    # Ensure total_time is not zero
+    if [ "$total_time" -eq 0 ]; then
+        percentage=0
+    else
+        percentage=$((current_time * 100 / total_time))
+    fi
+    
+    filled_width=$((bar_width * percentage / 100))
+    
+    bar="["
+    for ((i=0; i<filled_width; i++)); do bar+="="; done
+    bar+=">"
+    for ((i=filled_width; i<bar_width; i++)); do bar+=" "; done
+    bar+="]"
+    
+    printf "%s %d%%" "$bar" "$percentage"
+}
+
+format_time() {
+    local total_seconds=$1
+    if [[ "$total_seconds" == "null" ]] || [[ -z "$total_seconds" ]]; then
+        echo "00:00"
+        return
+    fi
+    total_seconds=${total_seconds%.*} # Remove decimals
+    mins=$((total_seconds / 60))
+    secs=$((total_seconds % 60))
+    printf "%02d:%02d" "$mins" "$secs"
+}
+
+draw_ui() {
+    local title=$1
+    local current_secs_raw=$2
+    local total_secs_raw=$3
+    local volume=$4
+    local paused=$5
+    
+    current_time=$(format_time "$current_secs_raw")
+    total_time=$(format_time "$total_secs_raw")
+    
+    progress_bar=$(draw_progress_bar "${current_secs_raw%.*}" "${total_secs_raw%.*}")
+    
+    status_icon="▶"
+    if [[ "$paused" == "true" ]]; then
+        status_icon="⏸"
+    fi
+    
+    # Clear the line
+    printf "\r\033[2K"
+    
+    # Print the UI
+    printf " %s Now Playing: %s | %s / %s %s | Vol: %d%%" \
+           "$status_icon" \
+           "$title" \
+           "$current_time" \
+           "$total_time" \
+           "$progress_bar" \
+           "$volume"
+}
+
+# --- Handle Flags ---
 case "$1" in
     -h|--help) show_help; exit 0 ;;
     -v|--version) echo "yterm v$VERSION"; exit 0 ;;
@@ -170,115 +248,85 @@ if [ -z "$media_type" ]; then exit 0; fi
 total=$(echo "$selected_list" | wc -l)
 current=0
 
-echo "$selected_list" | while read -r selected; do
+# --- Playback Loop ---
+current=0
+volume=100
+paused="false"
+
+# Convert fzf output to an array for robustness
+mapfile -t selected_array <<< "$selected_list"
+
+for selected in "${selected_array[@]}"; do
     current=$((current + 1))
     video_id=$(echo "$selected" | sed "s/.*\[\(.*\)\]$/\1/")
     title=$(echo "$selected" | sed "s/ \[[^]]*\]$//")
     url="https://www.youtube.com/watch?v=$video_id"
 
-    echo "------------------------------------------------"
-    echo "[$current/$total] Playing: $title"
-    echo "------------------------------------------------"
+    # --- Launch MPV for the track ---
+    MPV_ARGS=()
+    MPV_ARGS+=(--user-agent="$UA")
+    MPV_ARGS+=(--title="yterm: $title")
+    MPV_ARGS+=(--input-ipc-server="/tmp/mpv-socket-$(id -u)")
+    MPV_ARGS+=(--cache=yes)
+    MPV_ARGS+=(--demuxer-max-bytes=150M)
 
-    # Terminology Support (Linux only)
-    if [ $IS_MAC -eq 0 ] && command -v typop >/dev/null 2>&1 && [ "$TERMINOLOGY" = "1" ]; then
-        echo "Fetching stream for Terminology..."
-        stream_url=$(yt-dlp $COMMON_FLAGS -g --user-agent "$UA" -f "best[ext=mp4]" "$url" 2>/dev/null || echo "")
-        if [ -n "$stream_url" ]; then
-            echo "Launching Terminology popup..."
-            set +e; typop "$stream_url"; PLAY_STATUS=$?; set -e
-        else
-            PLAY_STATUS=1
+    if [ "$media_type" = "Audio" ]; then
+        MPV_ARGS+=(--no-video)
+        MPV_ARGS+=(--ytdl-format="bestaudio[ext=m4a]/bestaudio")
+        if [ $IS_MAC -eq 1 ]; then
+            MPV_ARGS+=(--really-quiet --msg-level=all=no)
         fi
-    else
-        PLAY_STATUS=1
+    else # Video
+        MPV_ARGS+=(--ytdl-format="bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best")
+        if [ $IS_MAC -eq 1 ]; then
+            MPV_ARGS+=(--hwdec=no --really-quiet --msg-level=all=no --no-terminal --no-video-osd)
+        fi
     fi
     
-    if [ $PLAY_STATUS -ne 0 ]; then
-        # Use an array for flags to safely handle spaces and quotes
-        MPV_ARGS=()
-        MPV_ARGS+=(--user-agent="$UA")
-        MPV_ARGS+=(--title="yterm: $title")
-        MPV_ARGS+=(--input-ipc-server="/tmp/mpv-socket-$(id -u)")
+    # Start mpv in the background
+    mpv "${MPV_ARGS[@]}" "$url" &> /dev/null &
+    MPV_PID=$!
+    
+    # Wait a moment for mpv to initialize and create the socket
+    sleep 2
 
-        # Performance & Stability flags
-        MPV_ARGS+=(--cache=yes)
-        MPV_ARGS+=(--demuxer-max-bytes=150M)
+    # --- "Now Playing" UI Loop ---
+    while kill -0 $MPV_PID 2>/dev/null; do
+        # Get properties from mpv
+        time_pos=$(get_mpv_property "time-pos")
+        duration=$(get_mpv_property "duration")
+        paused=$(get_mpv_property "pause")
+        volume_prop=$(get_mpv_property "volume")
+        # Ensure volume is an integer, default to 100 if null
+        volume=${volume_prop%.*}
+        [ -z "$volume" ] || [ "$volume" == "null" ] && volume=100
 
-        if [ "$media_type" = "Audio" ]; then
-            echo "Launching MPV in Audio-Only mode..."
-            MPV_ARGS+=(--no-video)
-            MPV_ARGS+=(--ytdl-format="bestaudio[ext=m4a]/bestaudio")
-            
-            # macOS Specific stability & cleanup flags
-            if [ $IS_MAC -eq 1 ]; then
-                MPV_ARGS+=(--really-quiet)
-                MPV_ARGS+=(--msg-level=all=no)
-            fi
 
-            # Start mpv in the background
-            mpv "${MPV_ARGS[@]}" "$url" &
-            MPV_PID=$!
-            
-            # Volume control loop
-            volume=100
-            echo -en "\rVolume: $volume% | Use +/- to change, q to skip"
-            while kill -0 $MPV_PID 2>/dev/null; do
-                read -rsn1 key
-                case "$key" in
-                    '+'|'=') # Also accept = for keyboards without a dedicated +
-                        volume=$((volume + 5))
-                        [ $volume -gt 100 ] && volume=100
-                        printf '{"command": ["set_property", "volume", %d]}\n' "$volume" | socat - "/tmp/mpv-socket-$(id -u)" >/dev/null
-                        echo -en "\rVolume: $volume% | Use +/- to change, q to skip"
-                        ;;
-                    '-')
-                        volume=$((volume - 5))
-                        [ $volume -lt 0 ] && volume=0
-                        printf '{"command": ["set_property", "volume", %d]}\n' "$volume" | socat - "/tmp/mpv-socket-$(id -u)" >/dev/null
-                        echo -en "\rVolume: $volume% | Use +/- to change, q to skip"
-                        ;;
-                    'q')
-                        kill $MPV_PID
-                        break
-                        ;;
-                esac
-                sleep 0.1
-            done
-            echo # Newline after the loop
+        draw_ui "[$current/$total] $title" "$time_pos" "$duration" "$volume" "$paused"
 
-        else # Video Mode
-            echo "Launching MPV in Video mode..."
-            MPV_ARGS+=(--ytdl-format="bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best")
-            
-            # macOS Specific stability & cleanup flags
-            if [ $IS_MAC -eq 1 ]; then
-                MPV_ARGS+=(--hwdec=no)
-                MPV_ARGS+=(--really-quiet)
-                MPV_ARGS+=(--msg-level=all=no)
-                MPV_ARGS+=(--no-terminal)
-                MPV_ARGS+=(--no-video-osd)
-            fi
-
-            if [ $IS_WSL -eq 1 ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
-                echo "No display detected. Playing Audio-Only."
-                MPV_ARGS+=(--no-video)
-            fi
-
-            set +e
-            if [ $IS_MAC -eq 1 ]; then
-                # On Mac, we redirect everything to hide any system warnings
-                mpv "${MPV_ARGS[@]}" "$url" &>/dev/null
-            else
-                mpv "${MPV_ARGS[@]}" "$url"
-            fi
-            MPV_EXIT=$?
-            set -e
-            
-            if [ $MPV_EXIT -ne 0 ] && [ $MPV_EXIT -ne 4 ]; then
-                echo "MPV exited with error code $MPV_EXIT. Checking for yt-dlp issues..."
-                yt-dlp --version
-            fi
-        fi
-    fi
+        # Listen for key press with a timeout
+        read -rsn1 -t 0.5 key
+        case "$key" in
+            '+'|'=')
+                send_mpv_command '["cycle", "volume", "up"]'
+                ;;
+            '-')
+                send_mpv_command '["cycle", "volume", "down"]'
+                ;;
+            'p')
+                send_mpv_command '["cycle", "pause"]'
+                ;;
+            'q')
+                kill $MPV_PID
+                break # Breaks inner loop to go to next track
+                ;;
+            'k')
+                kill $MPV_PID
+                echo -e "\n\nPlaylist cancelled. Exiting."
+                exit 0
+                ;;
+        esac
+    done
 done
+
+echo -e "\n\nPlaylist finished. Run yterm again to search for more."
