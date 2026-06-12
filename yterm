@@ -309,7 +309,9 @@ while true; do
             ;;
         "View Playlist"*)
             if [ -s "$PLAYLIST_FILE" ]; then
+                set +e
                 cat "$PLAYLIST_FILE" | fzf --prompt="Current Playlist (Read-only): " --height=80% --border --header="ESC to return" >/dev/null
+                set -e
             else
                 echo "Playlist is empty."
                 sleep 1
