@@ -54,7 +54,7 @@ OPTIONS:
 
 CONTROLS:
     1. PLAYLIST BUILDER:
-       - Use the menu to search, add tracks, and start playback.
+       - Use the menu to search, add tracks (TAB to multi-select), and start playback.
 
     2. DURING PLAYBACK:
        - p           : Pause/Resume.
@@ -297,7 +297,7 @@ while true; do
             set -e
             
             if [ -n "$results" ]; then
-                selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s): " --header="TAB to select, ENTER to add to playlist" --height=80% --border)
+                selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s): " --header="TAB to multi-select, ENTER to add to playlist" --height=80% --border)
                 if [ -n "$selected_list" ]; then
                     echo "$selected_list" >> "$PLAYLIST_FILE"
                 fi
