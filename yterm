@@ -144,28 +144,30 @@ draw_ui() {
     local total_secs_raw=$3
     local volume=$4
     local paused=$5
-    
+
     current_time=$(format_time "$current_secs_raw")
     total_time=$(format_time "$total_secs_raw")
-    
+
     progress_bar=$(draw_progress_bar "${current_secs_raw%.*}" "${total_secs_raw%.*}")
-    
+
     status_icon="▶"
     if [[ "$paused" == "true" ]]; then
         status_icon="⏸"
     fi
-    
-    # Clear the line
-    printf "\r\033[2K"
-    
-    # Print the UI, using %% to correctly escape the percent sign
-    printf " %s Now Playing: %s | %s / %s %s | Vol: %d%%" \
+
+    # Use tput to robustly redraw the UI in place
+    tput cuu 2
+    tput ed
+
+    # Print the UI lines
+    printf " %s Now Playing: %s | %s / %s %s | Vol: %d%%\n" \
            "$status_icon" \
            "$title" \
            "$current_time" \
            "$total_time" \
            "$progress_bar" \
            "$volume"
+    echo "   Controls: [p]ause | [q]uit track | [k]ill playlist | [+/-] volume"
 }
 
 # --- Handle Flags ---
