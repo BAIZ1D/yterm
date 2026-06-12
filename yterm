@@ -155,8 +155,8 @@ draw_ui() {
         status_icon="⏸"
     fi
 
-    # Use clear for a brute-force redraw that works on all terminals
-    clear
+    # Use ANSI escape sequences for a smoother redraw
+    printf "\033[H\033[J"
 
     # Print the UI lines
     printf " %s Now Playing: %s | %s / %s %s | Vol: %d%%\n" \
