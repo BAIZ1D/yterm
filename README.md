@@ -30,6 +30,9 @@
 
 By tying together the most robust open-source media tools, **yterm** delivers a seamless media experience directly from your shell.
 
+### Preview
+![yterm-demo](assets/yterm.gif)
+
 ### Core Architecture
 - **Search and UI:** Powered by `fzf` for interactive, menu-driven navigation and playlist building.
 - **Extraction:** Utilizes the latest standalone `yt-dlp` to bypass modern anti-bot protections.
