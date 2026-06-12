@@ -72,10 +72,35 @@ send_mpv_command() {
 }
 
 get_mpv_property() {
-    local request
-    request=$(printf '{"command": ["get_property", "%s"]}\n' "$1")
-    response=$(echo "$request" | socat - "/tmp/mpv-socket-$(id -u)")
-    echo "$response" | sed -n 's/.*"data":\([^,}]*\).*/\1/p' | sed 's/"//g'
+    local property=$1
+    local response
+    # Use a short timeout to prevent hanging if the socket is not ready
+    response=$(printf '{"command": ["get_property", "%s"]}\n' "$property" | socat -t 0.2 - "/tmp/mpv-socket-$(id -u)" 2>/dev/null)
+    
+    # Check for a valid JSON response containing "data"
+    if ! [[ "$response" == *"\"data\":"* ]]; then
+        if [[ "$property" == "time-pos" || "$property" == "duration" || "$property" == "volume" ]]; then
+            echo "0" # Return a safe numeric default
+        else
+            echo "false" # Return a safe boolean default
+        fi
+        return
+    fi
+    
+    # Extract data if the response is valid
+    local result
+    result=$(echo "$response" | sed -n 's/.*"data":\([^,}]*\).*/\1/p' | sed 's/"//g')
+    
+    # Final safety net for numeric properties
+    if [[ "$property" == "time-pos" || "$property" == "duration" || "$property" == "volume" ]]; then
+        if ! [[ "$result" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+            echo "0"
+        else
+            echo "$result"
+        fi
+    else
+        echo "$result"
+    fi
 }
 
 draw_progress_bar() {
