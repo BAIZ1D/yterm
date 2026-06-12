@@ -32,7 +32,7 @@ By tying together the most robust open-source media tools, **yterm** delivers a 
 
 ### Preview
 <div align="center">
-  <img src="assets/yterm.gif" alt="yterm-demo" width="700"/>
+  <img src="assets/yterm-small.gif" alt="yterm-demo" width="700"/>
 </div>
 
 ### Core Architecture
