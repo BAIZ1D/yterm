@@ -44,7 +44,7 @@ show_help() {
 yterm v$VERSION - Search and play YouTube videos directly from your terminal.
 
 USAGE:
-    yterm [OPTIONS] "search terms"
+    yterm start     Start the Playlist Builder menu
 
 OPTIONS:
     -h, --help      Show this help message
@@ -53,14 +53,14 @@ OPTIONS:
     -x, --uninstall Remove yterm from your system
 
 CONTROLS:
-    1. SEARCH MENU:
-       - Just type   : Filter results.
-       - TAB         : Select multiple videos for a queue.
-       - ENTER       : Start playing.
+    1. PLAYLIST BUILDER:
+       - Use the menu to search, add tracks, and start playback.
 
     2. DURING PLAYBACK:
-       - q           : Skip to the next video (MPV).
-       - CTRL-C      : Kill everything and exit.
+       - p           : Pause/Resume.
+       - q           : Skip to the next video.
+       - +/-         : Volume up/down.
+       - CTRL-C      : Kill playlist and exit.
 
 EOF
 }
@@ -209,7 +209,7 @@ case "$1" in
         ;;
     -u|--update)
         echo "Starting Full Update..."
-        # Use GITHUB_TOKEN environment variable if available for private repo support
+        # ... (update logic unchanged)
         TOKEN="${GITHUB_TOKEN:-}"
         
         if [ $IS_MAC -eq 1 ]; then
@@ -246,9 +246,16 @@ case "$1" in
         echo "Update complete! You are now on v$VERSION"
         exit 0
         ;;
+    "start")
+        # Continue to playlist builder
+        ;;
+    *)
+        echo "Error: Invalid or missing command."
+        echo "Use 'yterm start' to begin."
+        show_help
+        exit 1
+        ;;
 esac
-
-if [ -z "$1" ]; then show_help; exit 1; fi
 
 # --- Dependency Check ---
 check_tool() {
@@ -270,49 +277,59 @@ check_tool "socat"
 
 export YTDLP_JS_RUNTIMES="node"
 
+# --- Playlist Builder ---
 PLAYLIST_FILE="/tmp/yterm-playlist-$(id -u)"
 rm -f "$PLAYLIST_FILE"
 
 while true; do
-    read -p "Enter search term(s) (or 'play' to start): " search_term
-    if [ "$search_term" == "play" ]; then
-        if [ -s "$PLAYLIST_FILE" ]; then
-            break
-        else
-            echo "Playlist is empty."
-            continue
-        fi
-    fi
+    # Display current playlist count
+    count=$(wc -l < "$PLAYLIST_FILE" 2>/dev/null || echo 0)
+    
+    # Persistent Menu
+    choice=$(printf "Search & Add Tracks\nView Playlist (%d)\nStart Playback\nExit" "$count" | fzf --prompt="Playlist Builder > " --height=30% --layout=reverse --border --header="Select an action")
 
-    echo "Searching YouTube for: $search_term..."
-    # Try searching with standard flags
-    set +e
-    results=$(yt-dlp $COMMON_FLAGS "ytsearch50:$search_term" --flat-playlist --print "%(title)s [%(id)s]")
-    SEARCH_EXIT=$?
-    set -e
-
-    if [ $SEARCH_EXIT -ne 0 ] || [ -z "$results" ]; then
-        echo "Search failed. Trying alternate search..."
-        set +e
-        results=$(yt-dlp -4 --extractor-args "youtube:player-client=mweb" "ytsearch20:$search_term" --flat-playlist --print "%(title)s [%(id)s]")
-        SEARCH_EXIT=$?
-        set -e
-    fi
-
-    if [ $SEARCH_EXIT -ne 0 ] || [ -z "$results" ]; then
-        echo "Error: Search failed."
-        continue
-    fi
-
-    selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s) [TAB to multi-select]: " --header="yterm - Playlist Builder (TAB to select, ENTER to add)" --height=80% --border)
-
-    if [ -n "$selected_list" ]; then
-        echo "$selected_list" >> "$PLAYLIST_FILE"
-        echo "Added to playlist."
-    fi
+    case "$choice" in
+        "Search & Add Tracks"*)
+            read -p "Enter search term: " search_term
+            echo "Searching for: $search_term..."
+            set +e
+            results=$(yt-dlp $COMMON_FLAGS "ytsearch50:$search_term" --flat-playlist --print "%(title)s [%(id)s]")
+            set -e
+            
+            if [ -n "$results" ]; then
+                selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s): " --header="TAB to select, ENTER to add to playlist" --height=80% --border)
+                if [ -n "$selected_list" ]; then
+                    echo "$selected_list" >> "$PLAYLIST_FILE"
+                fi
+            else
+                echo "No results found."
+                sleep 1
+            fi
+            ;;
+        "View Playlist"*)
+            if [ -s "$PLAYLIST_FILE" ]; then
+                cat "$PLAYLIST_FILE" | fzf --prompt="Current Playlist (Read-only): " --height=80% --border --header="ESC to return"
+            else
+                echo "Playlist is empty."
+                sleep 1
+            fi
+            ;;
+        "Start Playback"*)
+            if [ -s "$PLAYLIST_FILE" ]; then
+                selected_list=$(cat "$PLAYLIST_FILE")
+                break
+            else
+                echo "Playlist is empty."
+                sleep 1
+            fi
+            ;;
+        "Exit"*)
+            rm -f "$PLAYLIST_FILE"
+            exit 0
+            ;;
+    esac
 done
 
-selected_list=$(cat "$PLAYLIST_FILE")
 rm -f "$PLAYLIST_FILE"
 
 # --- Media Type Selection ---
@@ -331,6 +348,7 @@ paused="false"
 mapfile -t selected_array <<< "$selected_list"
 
 for selected in "${selected_array[@]}"; do
+
     current=$((current + 1))
     video_id=$(echo "$selected" | sed "s/.*\[\(.*\)\]$/\1/")
     title=$(echo "$selected" | sed "s/ \[[^]]*\]$//")
