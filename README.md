@@ -31,7 +31,9 @@
 By tying together the most robust open-source media tools, **yterm** delivers a seamless media experience directly from your shell.
 
 ### Preview
-![yterm-demo](assets/yterm.gif)
+<div align="center">
+  <img src="assets/yterm.gif" alt="yterm-demo" width="700"/>
+</div>
 
 ### Core Architecture
 - **Search and UI:** Powered by `fzf` for interactive, menu-driven navigation and playlist building.
