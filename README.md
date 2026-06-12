@@ -24,7 +24,7 @@
 
 ## Overview
 
-**yterm** is an interactive, terminal-based YouTube client designed for power users. It provides an intuitive, menu-driven interface to search, build playlists, and watch videos without ads, tracking, or algorithmic suggestions.
+**yterm** is a fast, minimalist, and interactive terminal-based YouTube client designed for power users. This CLI tool allows you to search YouTube, build custom playlists, and watch videos distraction-free—without ads, tracking, or algorithmic suggestions.
 
 By tying together the most robust open-source media tools, **yterm** delivers a seamless media experience directly from your shell.
 
