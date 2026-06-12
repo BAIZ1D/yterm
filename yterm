@@ -158,7 +158,7 @@ draw_ui() {
     # Clear the line
     printf "\r\033[2K"
     
-    # Print the UI
+    # Print the UI, using %% to correctly escape the percent sign
     printf " %s Now Playing: %s | %s / %s %s | Vol: %d%%" \
            "$status_icon" \
            "$title" \
@@ -316,42 +316,44 @@ for selected in "${selected_array[@]}"; do
     sleep 2
 
     # --- "Now Playing" UI Loop ---
-    while kill -0 $MPV_PID 2>/dev/null; do
-        # Get properties from mpv
-        time_pos=$(get_mpv_property "time-pos")
-        duration=$(get_mpv_property "duration")
-        paused=$(get_mpv_property "pause")
-        volume_prop=$(get_mpv_property "volume")
-        # Ensure volume is an integer, default to 100 if null
-        volume=${volume_prop%.*}
-        [ -z "$volume" ] || [ "$volume" == "null" ] && volume=100
+    (
+        set +e # Isolate this loop from the main script's error checking
+        while kill -0 $MPV_PID 2>/dev/null; do
+            # Get properties from mpv
+            time_pos=$(get_mpv_property "time-pos")
+            duration=$(get_mpv_property "duration")
+            paused=$(get_mpv_property "pause")
+            volume_prop=$(get_mpv_property "volume")
+            # Ensure volume is an integer, default to 100 if null
+            volume=${volume_prop%.*}
+            [ -z "$volume" ] || [ "$volume" == "null" ] && volume=100
 
+            draw_ui "[$current/$total] $title" "$time_pos" "$duration" "$volume" "$paused"
 
-        draw_ui "[$current/$total] $title" "$time_pos" "$duration" "$volume" "$paused"
-
-        # Listen for key press with a timeout
-        read -rsn1 -t 0.5 key
-        case "$key" in
-            '+'|'=')
-                send_mpv_command '["cycle", "volume", "up"]'
-                ;;
-            '-')
-                send_mpv_command '["cycle", "volume", "down"]'
-                ;;
-            'p')
-                send_mpv_command '["cycle", "pause"]'
-                ;;
-            'q')
-                kill $MPV_PID
-                break # Breaks inner loop to go to next track
-                ;;
-            'k')
-                kill $MPV_PID
-                echo -e "\n\nPlaylist cancelled. Exiting."
-                exit 0
-                ;;
-        esac
-    done
+            # Listen for key press with a timeout
+            read -rsn1 -t 0.5 key
+            case "$key" in
+                '+'|'=')
+                    send_mpv_command '["cycle", "volume", "up"]'
+                    ;;
+                '-')
+                    send_mpv_command '["cycle", "volume", "down"]'
+                    ;;
+                'p')
+                    send_mpv_command '["cycle", "pause"]'
+                    ;;
+                'q')
+                    kill $MPV_PID
+                    break # Breaks inner loop to go to next track
+                    ;;
+                'k')
+                    kill $MPV_PID
+                    echo -e "\n\nPlaylist cancelled. Exiting."
+                    exit 0
+                    ;;
+            esac
+        done
+    )
 done
 
 echo -e "\n\nPlaylist finished. Run yterm again to search for more."
