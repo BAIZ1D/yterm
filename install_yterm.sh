@@ -86,7 +86,7 @@ if [[ "${OS}" == "Linux"* ]]; then
             sudo apt remove -y yt-dlp
         fi
         echo -e "${BLUE}Installing system dependencies...${NC}"
-        sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
+        sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs socat
         
         echo -e "${BLUE}Installing latest standalone yt-dlp binary...${NC}"
         ensure_writable_dir "/usr/local/bin"

@@ -133,6 +133,7 @@ check_tool "yt-dlp"
 check_tool "fzf"
 check_tool "mpv"
 check_tool "ffmpeg"
+check_tool "socat"
 
 export YTDLP_JS_RUNTIMES="node"
 
@@ -162,6 +163,10 @@ selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s) [TAB to 
 
 if [ -z "$selected_list" ]; then exit 0; fi
 
+# --- Media Type Selection ---
+media_type=$(printf "Video\nAudio" | fzf --prompt="Select media type: " --height=15% --layout=reverse)
+if [ -z "$media_type" ]; then exit 0; fi
+
 total=$(echo "$selected_list" | wc -l)
 current=0
 
@@ -190,53 +195,90 @@ echo "$selected_list" | while read -r selected; do
     fi
     
     if [ $PLAY_STATUS -ne 0 ]; then
-         echo "Launching MPV..."
-         
-         # Use an array for flags to safely handle spaces and quotes
-         MPV_ARGS=()
-         MPV_ARGS+=(--user-agent="$UA")
-         MPV_ARGS+=(--title="yterm: $title")
-         
-         # macOS Specific stability & cleanup flags
-         if [ $IS_MAC -eq 1 ]; then
-             # Use a unique socket to avoid conflicts
-             MPV_ARGS+=(--input-ipc-server="/tmp/mpv-socket-$(id -u)")
-             
-             # MINIMALIST UI for macOS (v2.4.1)
-             # 1. Force software decoding
-             MPV_ARGS+=(--hwdec=no)
-             # 2. Total silencing of all logs
-             MPV_ARGS+=(--really-quiet)
-             MPV_ARGS+=(--msg-level=all=no)
-             # 3. Disable the terminal status line entirely on Mac
-             MPV_ARGS+=(--no-terminal)
-             # 4. Clean OSD
-             MPV_ARGS+=(--no-video-osd)
-         fi
+        # Use an array for flags to safely handle spaces and quotes
+        MPV_ARGS=()
+        MPV_ARGS+=(--user-agent="$UA")
+        MPV_ARGS+=(--title="yterm: $title")
+        MPV_ARGS+=(--input-ipc-server="/tmp/mpv-socket-$(id -u)")
 
-         # Performance & Stability flags
-         MPV_ARGS+=(--cache=yes)
-         MPV_ARGS+=(--demuxer-max-bytes=150M)
-         MPV_ARGS+=(--ytdl-format="bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best")
-         
-         if [ $IS_WSL -eq 1 ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
-             echo "No display detected. Playing Audio-Only."
-             MPV_ARGS+=(--no-video)
-         fi
-         
-         set +e
-         if [ $IS_MAC -eq 1 ]; then
-             # On Mac, we redirect everything to hide any system warnings
-             mpv "${MPV_ARGS[@]}" "$url" &>/dev/null
-         else
-             mpv "${MPV_ARGS[@]}" "$url"
-         fi
-         MPV_EXIT=$?
-         set -e
-         
-         if [ $MPV_EXIT -ne 0 ] && [ $MPV_EXIT -ne 4 ]; then
-             echo "MPV exited with error code $MPV_EXIT. Checking for yt-dlp issues..."
-             yt-dlp --version
-         fi
+        # Performance & Stability flags
+        MPV_ARGS+=(--cache=yes)
+        MPV_ARGS+=(--demuxer-max-bytes=150M)
+
+        if [ "$media_type" = "Audio" ]; then
+            echo "Launching MPV in Audio-Only mode..."
+            MPV_ARGS+=(--no-video)
+            MPV_ARGS+=(--ytdl-format="bestaudio[ext=m4a]/bestaudio")
+            
+            # macOS Specific stability & cleanup flags
+            if [ $IS_MAC -eq 1 ]; then
+                MPV_ARGS+=(--really-quiet)
+                MPV_ARGS+=(--msg-level=all=no)
+            fi
+
+            # Start mpv in the background
+            mpv "${MPV_ARGS[@]}" "$url" &
+            MPV_PID=$!
+            
+            # Volume control loop
+            volume=100
+            echo -en "\rVolume: $volume% | Use +/- to change, q to skip"
+            while kill -0 $MPV_PID 2>/dev/null; do
+                read -rsn1 key
+                case "$key" in
+                    '+'|'=') # Also accept = for keyboards without a dedicated +
+                        volume=$((volume + 5))
+                        [ $volume -gt 100 ] && volume=100
+                        printf '{"command": ["set_property", "volume", %d]}\n' "$volume" | socat - "/tmp/mpv-socket-$(id -u)" >/dev/null
+                        echo -en "\rVolume: $volume% | Use +/- to change, q to skip"
+                        ;;
+                    '-')
+                        volume=$((volume - 5))
+                        [ $volume -lt 0 ] && volume=0
+                        printf '{"command": ["set_property", "volume", %d]}\n' "$volume" | socat - "/tmp/mpv-socket-$(id -u)" >/dev/null
+                        echo -en "\rVolume: $volume% | Use +/- to change, q to skip"
+                        ;;
+                    'q')
+                        kill $MPV_PID
+                        break
+                        ;;
+                esac
+                sleep 0.1
+            done
+            echo # Newline after the loop
+
+        else # Video Mode
+            echo "Launching MPV in Video mode..."
+            MPV_ARGS+=(--ytdl-format="bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best")
+            
+            # macOS Specific stability & cleanup flags
+            if [ $IS_MAC -eq 1 ]; then
+                MPV_ARGS+=(--hwdec=no)
+                MPV_ARGS+=(--really-quiet)
+                MPV_ARGS+=(--msg-level=all=no)
+                MPV_ARGS+=(--no-terminal)
+                MPV_ARGS+=(--no-video-osd)
+            fi
+
+            if [ $IS_WSL -eq 1 ] && [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+                echo "No display detected. Playing Audio-Only."
+                MPV_ARGS+=(--no-video)
+            fi
+
+            set +e
+            if [ $IS_MAC -eq 1 ]; then
+                # On Mac, we redirect everything to hide any system warnings
+                mpv "${MPV_ARGS[@]}" "$url" &>/dev/null
+            else
+                mpv "${MPV_ARGS[@]}" "$url"
+            fi
+            MPV_EXIT=$?
+            set -e
+            
+            if [ $MPV_EXIT -ne 0 ] && [ $MPV_EXIT -ne 4 ]; then
+                echo "MPV exited with error code $MPV_EXIT. Checking for yt-dlp issues..."
+                yt-dlp --version
+            fi
+        fi
     fi
 done
