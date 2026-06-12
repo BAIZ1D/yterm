@@ -270,31 +270,50 @@ check_tool "socat"
 
 export YTDLP_JS_RUNTIMES="node"
 
-echo "Searching YouTube for: $*..."
-# Try searching with standard flags
-# We remove 2>/dev/null to show errors if YouTube is blocking
-set +e
-results=$(yt-dlp $COMMON_FLAGS "ytsearch50:$*" --flat-playlist --print "%(title)s [%(id)s]")
-SEARCH_EXIT=$?
-set -e
+PLAYLIST_FILE="/tmp/yterm-playlist-$(id -u)"
+rm -f "$PLAYLIST_FILE"
 
-if [ $SEARCH_EXIT -ne 0 ] || [ -z "$results" ]; then
-    echo "Primary search failed. Trying alternate search..."
+while true; do
+    read -p "Enter search term(s) (or 'play' to start): " search_term
+    if [ "$search_term" == "play" ]; then
+        if [ -s "$PLAYLIST_FILE" ]; then
+            break
+        else
+            echo "Playlist is empty."
+            continue
+        fi
+    fi
+
+    echo "Searching YouTube for: $search_term..."
+    # Try searching with standard flags
     set +e
-    results=$(yt-dlp -4 --extractor-args "youtube:player-client=mweb" "ytsearch20:$*" --flat-playlist --print "%(title)s [%(id)s]")
+    results=$(yt-dlp $COMMON_FLAGS "ytsearch50:$search_term" --flat-playlist --print "%(title)s [%(id)s]")
     SEARCH_EXIT=$?
     set -e
-fi
 
-if [ $SEARCH_EXIT -ne 0 ] || [ -z "$results" ]; then
-    echo "Error: Search failed. YouTube might be blocking your connection."
-    echo "Check if your yt-dlp is up to date: yterm --update"
-    exit 1
-fi
+    if [ $SEARCH_EXIT -ne 0 ] || [ -z "$results" ]; then
+        echo "Search failed. Trying alternate search..."
+        set +e
+        results=$(yt-dlp -4 --extractor-args "youtube:player-client=mweb" "ytsearch20:$search_term" --flat-playlist --print "%(title)s [%(id)s]")
+        SEARCH_EXIT=$?
+        set -e
+    fi
 
-selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s) [TAB to multi-select]: " --header="yterm - Playlist Builder (TAB to select, ENTER to play)" --height=80% --border)
+    if [ $SEARCH_EXIT -ne 0 ] || [ -z "$results" ]; then
+        echo "Error: Search failed."
+        continue
+    fi
 
-if [ -z "$selected_list" ]; then exit 0; fi
+    selected_list=$(echo "$results" | fzf --multi --prompt="Select video(s) [TAB to multi-select]: " --header="yterm - Playlist Builder (TAB to select, ENTER to add)" --height=80% --border)
+
+    if [ -n "$selected_list" ]; then
+        echo "$selected_list" >> "$PLAYLIST_FILE"
+        echo "Added to playlist."
+    fi
+done
+
+selected_list=$(cat "$PLAYLIST_FILE")
+rm -f "$PLAYLIST_FILE"
 
 # --- Media Type Selection ---
 media_type=$(printf "Video\nAudio" | fzf --prompt="Select media type: " --height=15% --layout=reverse)
