@@ -227,13 +227,13 @@ case "$1" in
         if [ $IS_MAC -eq 1 ]; then
             if command -v brew &> /dev/null; then
                 echo "Updating via Homebrew..."
-                brew update && brew upgrade yt-dlp fzf mpv ffmpeg node
+                brew update && brew upgrade yt-dlp fzf mpv ffmpeg node socat
             else
                 echo "Error: Homebrew not found. Cannot update system packages."
             fi
         elif command -v apt &> /dev/null; then
             echo "Updating via apt..."
-            sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs
+            sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs socat
             if dpkg -l | grep -q yt-dlp; then
                 echo "Removing outdated apt version of yt-dlp..."
                 sudo apt remove -y yt-dlp
