@@ -7,6 +7,22 @@
 set -e
 
 VERSION="2.6.0"
+
+# Fix CURL_CMD initialization before use
+CURL_CMD="/usr/bin/curl"
+
+# --- Version Check ---
+# Check for updates against remote version (simplified)
+REMOTE_VERSION_URL="https://raw.githubusercontent.com/BAIZ1D/yterm/main/VERSION"
+REMOTE_VERSION=$($CURL_CMD -s "$REMOTE_VERSION_URL")
+
+if [ -n "$REMOTE_VERSION" ] && [ "$VERSION" != "$REMOTE_VERSION" ]; then
+    echo "------------------------------------------------"
+    echo "UPDATE AVAILABLE: v$VERSION -> v$REMOTE_VERSION"
+    echo "Please run: yterm --update"
+    echo "------------------------------------------------"
+fi
+
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 get_real_curl() {
@@ -15,11 +31,6 @@ get_real_curl() {
     echo "curl"
 }
 CURL_CMD=$(get_real_curl)
-
-# --- Version Check ---
-# Check for updates against remote version (simplified)
-REMOTE_VERSION_URL="https://raw.githubusercontent.com/BAIZ1D/yterm/main/VERSION"
-REMOTE_VERSION=$($CURL_CMD -s "$REMOTE_VERSION_URL")
 
 # Enhanced Stability flags for 2026/WSL 
 COMMON_FLAGS="-4 --no-check-certificate --socket-timeout 10 --geo-bypass"
