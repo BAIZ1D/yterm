@@ -1,6 +1,6 @@
-# yterm
-
 <div align="center">
+
+# yterm
 
 ```text
   _   _  _____  _____  ____  __  __ 
@@ -24,13 +24,14 @@
 
 ## Overview
 
-**yterm v2.6.0** is an interactive, terminal-based YouTube client designed for power users. It provides an intuitive, menu-driven interface to search, build playlists, and watch videos without ads, tracking, or algorithmic suggestions.
+**yterm** is an interactive, terminal-based YouTube client designed for power users. It provides an intuitive, menu-driven interface to search, build playlists, and watch videos without ads, tracking, or algorithmic suggestions.
 
-### Key Features (v2.6.0)
-- **Interactive Playlist Builder**: Search and append tracks across multiple search queries into a single, cohesive playlist.
-- **Dynamic UI**: A new, spacious ASCII-based player UI with real-time progress, volume visualization, and track highlighting.
-- **Improved Workflow**: Simple, menu-driven navigation replaces clunky CLI argument parsing.
-- **Robust Controls**: Seamless `Ctrl+C` termination, volume controls (`+/-`), and track skipping (`q`).
+By tying together the most robust open-source media tools, **yterm** delivers a seamless media experience directly from your shell.
+
+### Core Architecture
+- **Search and UI:** Powered by `fzf` for interactive, menu-driven navigation and playlist building.
+- **Extraction:** Utilizes the latest standalone `yt-dlp` to bypass modern anti-bot protections.
+- **Playback:** Handled by `mpv` for lightweight, hardware-accelerated video rendering.
 
 ---
 
@@ -39,7 +40,7 @@
 The installation script automates the resolution of system dependencies, ensures the correct standalone binaries are present, and configures the tool.
 
 ### Dependencies
-- `yt-dlp`, `fzf`, `mpv`, `ffmpeg`, `socat` (new), `node`
+- `yt-dlp`, `fzf`, `mpv`, `ffmpeg`, `socat`, `node`
 
 ### Linux (Debian / Ubuntu / Kali / Mint)
 ```bash
@@ -49,6 +50,12 @@ sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs socat && /usr/
 ### macOS
 ```bash
 brew install yt-dlp fzf mpv ffmpeg curl node socat && /usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash
+```
+
+### Windows (PowerShell / WSL)
+This command detects the presence of the Windows Subsystem for Linux (WSL). If absent, it installs WSL. If present, it routes the installation directly into your Linux environment.
+```powershell
+if (!(Get-Command wsl -ErrorAction SilentlyContinue)) { wsl --install; echo "WSL is now installing. Restart your PC and run this again!" } else { wsl bash -c "sudo apt update && sudo apt install -y curl fzf mpv ffmpeg nodejs socat && /usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh | bash" }
 ```
 
 ---
@@ -85,12 +92,19 @@ yterm --update
 
 ---
 
-## Changelog (v2.6.0)
-- **New**: Interactive UI-driven Playlist Builder menu.
-- **New**: Multi-search playlist accumulation.
-- **New**: Spacious ASCII-based player UI with volume bar.
-- **Fix**: Improved playlist termination logic (`Ctrl+C` reliability).
-- **Fix**: Resolved ANSI redraw issues causing cursor/line displacement.
+## Version Management
+
+### Installing a Specific Version
+To pin your installation to a known, stable release, utilize the `YTERM_VERSION` variable:
+```bash
+YTERM_VERSION=v2.6.0 bash -c "$(/usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/install_yterm.sh)"
+```
+
+### Uninstallation
+To cleanly remove the application binary and scrub the `PATH` entries from your shell configuration files:
+```bash
+yterm --uninstall
+```
 
 ---
 
