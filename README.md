@@ -117,6 +117,10 @@ To cleanly remove the application binary and scrub the `PATH` entries from your 
 ```bash
 yterm --uninstall
 ```
+*Alternatively, run the uninstaller directly:*
+```bash
+bash -c "$(/usr/bin/env curl -sSL https://raw.githubusercontent.com/BAIZ1D/yterm/main/uninstall_yterm.sh)"
+```
 
 ---
 
