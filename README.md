@@ -24,9 +24,9 @@
 
 ## Overview
 
-**yterm v2.5.0** is an interactive, terminal-based YouTube client designed for power users. It provides an intuitive, menu-driven interface to search, build playlists, and watch videos without ads, tracking, or algorithmic suggestions.
+**yterm v2.6.0** is an interactive, terminal-based YouTube client designed for power users. It provides an intuitive, menu-driven interface to search, build playlists, and watch videos without ads, tracking, or algorithmic suggestions.
 
-### Key Features (v2.5.0)
+### Key Features (v2.6.0)
 - **Interactive Playlist Builder**: Search and append tracks across multiple search queries into a single, cohesive playlist.
 - **Dynamic UI**: A new, spacious ASCII-based player UI with real-time progress, volume visualization, and track highlighting.
 - **Improved Workflow**: Simple, menu-driven navigation replaces clunky CLI argument parsing.
@@ -85,7 +85,7 @@ yterm --update
 
 ---
 
-## Changelog (v2.5.0)
+## Changelog (v2.6.0)
 - **New**: Interactive UI-driven Playlist Builder menu.
 - **New**: Multi-search playlist accumulation.
 - **New**: Spacious ASCII-based player UI with volume bar.
