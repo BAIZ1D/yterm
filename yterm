@@ -283,6 +283,7 @@ rm -f "$PLAYLIST_FILE"
 
 while true; do
     # Display current playlist count
+    [ ! -f "$PLAYLIST_FILE" ] && touch "$PLAYLIST_FILE"
     count=$(wc -l < "$PLAYLIST_FILE" 2>/dev/null || echo 0)
     
     # Persistent Menu
@@ -308,7 +309,7 @@ while true; do
             ;;
         "View Playlist"*)
             if [ -s "$PLAYLIST_FILE" ]; then
-                cat "$PLAYLIST_FILE" | fzf --prompt="Current Playlist (Read-only): " --height=80% --border --header="ESC to return"
+                cat "$PLAYLIST_FILE" | fzf --prompt="Current Playlist (Read-only): " --height=80% --border --header="ESC to return" >/dev/null
             else
                 echo "Playlist is empty."
                 sleep 1
@@ -406,4 +407,8 @@ for selected in "${selected_array[@]}"; do
     done
     set -e
 done
+
+echo -e "\n\nPlaylist finished."
+echo "Run 'yterm start' to begin a new session."
+
 
