@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # yterm - The Terminal YouTube Experience
-# Version: 2.6.0
+# Version: 2.7.0
 # Made by: BAIZID AL HAMID (cause I was bored)
 
 # --- Strict Mode ---
 set -e
 
-VERSION="2.6.0"
+VERSION="2.7.0"
 
 # Fix CURL_CMD initialization before use
 CURL_CMD="/usr/bin/curl"
@@ -235,6 +235,9 @@ case "$1" in
             else
                 echo "Error: Homebrew not found. Cannot update system packages."
             fi
+        elif command -v pacman &> /dev/null; then
+            echo "Updating via pacman..."
+            sudo pacman -S --noconfirm fzf mpv ffmpeg curl nodejs socat yt-dlp
         elif command -v apt &> /dev/null; then
             echo "Updating via apt..."
             sudo apt update && sudo apt install -y fzf mpv ffmpeg curl nodejs socat
@@ -279,6 +282,8 @@ check_tool() {
         echo "Error: Required dependency '$1' is not installed."
         if [ $IS_MAC -eq 1 ]; then
             echo "Fix: brew install $1"
+        elif command -v pacman &> /dev/null; then
+            echo "Fix: sudo pacman -S $1"
         else
             echo "Fix: sudo apt install $1"
         fi
@@ -380,6 +385,8 @@ for selected in "${selected_array[@]}"; do
     MPV_ARGS+=(--input-ipc-server="/tmp/mpv-socket-$(id -u)")
     MPV_ARGS+=(--cache=yes)
     MPV_ARGS+=(--demuxer-max-bytes=150M)
+    MPV_ARGS+=(--demuxer-readahead-secs=60)
+    MPV_ARGS+=(--cache-secs=60)
 
     if [ "$media_type" = "Audio" ]; then
         MPV_ARGS+=(--no-video)
@@ -391,6 +398,8 @@ for selected in "${selected_array[@]}"; do
         MPV_ARGS+=(--ytdl-format="bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best")
         if [ $IS_MAC -eq 1 ]; then
             MPV_ARGS+=(--hwdec=no --really-quiet --msg-level=all=no --no-terminal --no-video-osd)
+        else
+            MPV_ARGS+=(--hwdec=auto --framedrop=vo --demuxer-max-bytes=500M)
         fi
     fi
     
@@ -404,13 +413,20 @@ for selected in "${selected_array[@]}"; do
 
     # --- "Now Playing" UI Loop ---
     while kill -0 $MPV_PID 2>/dev/null; do
-        # Get properties from mpv
-        time_pos=$(get_mpv_property "time-pos")
-        duration=$(get_mpv_property "duration")
-        paused=$(get_mpv_property "pause")
-        volume_prop=$(get_mpv_property "volume")
+        # Get properties from mpv in a single batch query to prevent micro-stuttering
+        socket_file="/tmp/mpv-socket-$(id -u)"
+        properties_json=$(printf '{"command": ["get_property", "time-pos"]}\n{"command": ["get_property", "duration"]}\n{"command": ["get_property", "pause"]}\n{"command": ["get_property", "volume"]}\n' | socat -t 0.15 - "$socket_file" 2>/dev/null | jq -s -r 'map(.data) | @tsv' 2>/dev/null || echo "")
+        
+        # Read the tab-separated values
+        IFS=$'\t' read -r time_pos duration paused volume_prop <<< "$properties_json"
+        
+        # Apply fallback values if empty/null
+        [ -z "$time_pos" ] || [ "$time_pos" == "null" ] && time_pos=0
+        [ -z "$duration" ] || [ "$duration" == "null" ] && duration=0
+        [ -z "$paused" ] || [ "$paused" == "null" ] && paused="false"
+        [ -z "$volume_prop" ] || [ "$volume_prop" == "null" ] && volume_prop=100
+        
         volume=${volume_prop%.*}
-        [ -z "$volume" ] || [ "$volume" == "null" ] && volume=100
 
         draw_ui "[$current/$total] $title" "$time_pos" "$duration" "$volume" "$paused" "$selected_list" "$((current-1))"
 

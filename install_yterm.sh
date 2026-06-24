@@ -79,7 +79,11 @@ ensure_writable_file() {
 echo -e "${BLUE}Checking dependencies...${NC}"
 
 if [[ "${OS}" == "Linux"* ]]; then
-    if command -v apt &> /dev/null; then
+    if command -v pacman &> /dev/null; then
+        echo -e "${BLUE}Arch Linux Detected.${NC}"
+        echo -e "${BLUE}Installing system dependencies via pacman...${NC}"
+        sudo pacman -S --noconfirm fzf mpv ffmpeg curl nodejs socat yt-dlp
+    elif command -v apt &> /dev/null; then
         echo -e "${BLUE}Optimizing yt-dlp for Linux/WSL...${NC}"
         if dpkg -l | grep -q yt-dlp; then
             echo -e "${RED}Removing outdated yt-dlp from apt...${NC}"
@@ -92,6 +96,8 @@ if [[ "${OS}" == "Linux"* ]]; then
         ensure_writable_dir "/usr/local/bin"
         sudo $CURL_CMD -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
         sudo chmod a+rx /usr/local/bin/yt-dlp
+    else
+        echo -e "${RED}Unsupported Linux distribution (neither pacman nor apt found). Please install dependencies manually.${NC}"
     fi
 elif [[ "${OS}" == "Darwin"* ]]; then
     echo -e "${BLUE}macOS Detected.${NC}"
@@ -136,13 +142,16 @@ chmod +x "$INSTALL_DIR/yterm"
 echo -e "${BLUE}Setting up PATH...${NC}"
 # Determine which files to update
 TARGET_FILES=()
+PATH_ENTRY="export PATH=\"\$HOME/.local/bin:\$PATH\""
+
 if [[ "$SHELL" == *"zsh"* ]]; then 
     TARGET_FILES=("$HOME/.zshrc" "$HOME/.zprofile")
 elif [[ "$SHELL" == *"bash"* ]]; then 
     TARGET_FILES=("$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile")
+elif [[ "$SHELL" == *"fish"* ]]; then
+    TARGET_FILES=("$HOME/.config/fish/config.fish")
+    PATH_ENTRY="set -gx PATH \"\$HOME/.local/bin\" \$PATH"
 fi
-
-PATH_ENTRY="export PATH=\"\$HOME/.local/bin:\$PATH\""
 
 for shell_file in "${TARGET_FILES[@]}"; do
     ensure_writable_file "$shell_file"
